@@ -65,11 +65,11 @@ class OracleBatchifier(AbstractBatchifier):
                 spat_feat = get_spatial_feat(game.object.bbox, picture.width, picture.height)
                 batch['spatial'].append(spat_feat)
 
-            if 'crop_fc8' in sources:
-                batch['crop_fc8'].append(game.object.fc8)
+            if 'crop' in sources:
+                batch['crop_fc8'].append(game.object.get_crop())
 
-            if 'picture_fc8' in sources:
-                batch['picture_fc8'].append(picture.fc8)
+            if 'image' in sources:
+                batch['image'].append(picture.get_image())
 
             # Load picture if required
             if any([x in sources for x in ('picture_raw', 'crop')]):

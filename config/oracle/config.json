@@ -4,7 +4,7 @@
     "category": true,
     "spatial": true,
     "crop": false,
-    "picture": false
+    "image": false
   },
 
   "model": {
@@ -24,9 +24,8 @@
     },
 
     "image": {
-      "width": 224,
-      "height": 224,
-      "channel": 3
+      "image_input": "features",
+      "dim": [224,224,3]
     },
 
     "crop": {

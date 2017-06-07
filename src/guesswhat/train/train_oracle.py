@@ -6,21 +6,20 @@ import os
 import pickle
 from multiprocessing import Pool
 
-
-
-from generic.misc.config import load_config
-import guesswhat.train.utils as utils
-
 import tensorflow as tf
 
 from generic.data_provider.iterator import Iterator
 from generic.tensorflow.evaluator import Evaluator
 from generic.tensorflow.optimizer import create_optimizer
 
-from guesswhat.data_provider.dataset import OracleDataset
+from guesswhat.data_provider.guesswhat_dataset import OracleDataset
 from guesswhat.data_provider.oracle_batchifier import OracleBatchifier
-from guesswhat.models.oracle.oracle_network import OracleNetwork
+from guesswhat.data_provider.nlp_preprocessors import GWTokenizer
+from generic.utils.config import load_config
 
+
+from guesswhat.models.oracle.oracle_network import OracleNetwork
+from guesswhat.train.utils import get_img_loader, load_checkpoint
 
 
 Environment = collections.namedtuple('Environment',  ['trainset', 'validset', 'testset', 'tokenizer'])
@@ -50,18 +49,27 @@ logger = logging.getLogger()
 #  LOAD DATA
 #############################
 
-(trainset, validset, testset), tokenizer = utils.load_data(
-    args.data_dir, load_crop=False, load_picture=False, image_dir=args.image_dir)
-
-trainset = OracleDataset(trainset)
-validset = OracleDataset(validset)
-testset = OracleDataset(testset)
+# Load image
+logger.info('Loading images..')
+image_loader = get_img_loader(config, 'image')
+crop_loader = get_img_loader(config, 'crop')
 
 
+# Load data
+logger.info('Loading data..')
+trainset = OracleDataset.load(args.data_dir, "train", image_loader, crop_loader)
+validset = OracleDataset.load(args.data_dir, "valid", image_loader, crop_loader)
+testset = OracleDataset.load(args.data_dir, "test", image_loader, crop_loader)
+
+# Load dictionary
+logger.info('Loading dictionary..')
+tokenizer = GWTokenizer(os.path.join(args.data_dir, 'dict.json'))
+
+# Build Network
 logger.info('Building network..')
 oracle = OracleNetwork(config, len(tokenizer.word2i))
 
-
+# Build Optimizer
 logger.info('Building optimizer..')
 optimizer, outputs = create_optimizer(oracle, oracle.loss, config)
 
@@ -87,7 +95,7 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
     logger.info("Sources: " + ', '.join(sources))
 
     sess.run(tf.global_variables_initializer())
-    start_epoch = utils.load_checkpoint(sess, saver, args, save_path)
+    start_epoch = load_checkpoint(sess, saver, args, save_path)
 
     best_val_err = 1e5
     best_train_err = None

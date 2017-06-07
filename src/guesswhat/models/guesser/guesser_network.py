@@ -26,7 +26,6 @@ class GuesserNetwork(Guesser):
         self.scope_name = "guesser"
 
         with tf.variable_scope(self.scope_name):
-
             mini_batch_size = None
             # PICTURE
             # self.picture_fc8 = tf.placeholder(
@@ -35,22 +34,13 @@ class GuesserNetwork(Guesser):
             #     name='picture_fc8')
 
             # FLATTEN dialogue_lstm
-            self.dialogues = tf.placeholder(tf.int32,
-                                            [mini_batch_size, None],
-                                            name='question')
+            self.dialogues = tf.placeholder(tf.int32, [mini_batch_size, None], name='question')
+            self.seq_length = tf.placeholder(tf.int32, [mini_batch_size], name='seq_length')
 
-            self.seq_length = tf.placeholder(tf.int32,
-                                             [mini_batch_size],
-                                             name='seq_length')
             # OBJECTS
-            self.mask = tf.placeholder(tf.float32, [mini_batch_size, None],
-                                       name='mask')
-            self.obj_cats = tf.placeholder(tf.int32,
-                                           [mini_batch_size, None],
-                                           name='obj_cats')
-            self.obj_spats = tf.placeholder(tf.float32,
-                                            [mini_batch_size, None, config['model']['spat_dim']],
-                                            name='obj_spats')
+            self.mask = tf.placeholder(tf.float32, [mini_batch_size, None], name='mask')
+            self.obj_cats = tf.placeholder(tf.int32, [mini_batch_size, None], name='obj_cats')
+            self.obj_spats = tf.placeholder(tf.float32, [mini_batch_size, None, config['model']['spat_dim']], name='obj_spats')
 
             self.object_cats_emb = utils.get_embedding(
                 self.obj_cats,
@@ -71,12 +61,12 @@ class GuesserNetwork(Guesser):
                     self.flat_objects_inp,
                     config['model']['obj_mlp_units'],
                     activation='relu',
-		    scope='l1')
+                    scope='l1')
                 h2 = utils.fully_connected(
                     h1,
                     config['model']['dialog_emb_dim'],
                     activation='relu',
-		    scope='l2')
+                    scope='l2')
 
             obj_embs = tf.reshape(h2, [-1, tf.shape(self.obj_cats)[1], config['model']['dialog_emb_dim']])
 
@@ -127,7 +117,7 @@ class GuesserNetwork(Guesser):
                 s = json.loads(line.decode('utf-8'))
                 if s['identifier'] == identifier:
                     config = s['config']
-            assert(config is not None), "Couldn't find Guesser config"
+            assert (config is not None), "Couldn't find Guesser config"
         return cls(config)
 
     def train(self, sess, iterator):

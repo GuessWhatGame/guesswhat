@@ -46,17 +46,32 @@ class OracleNetwork(AbstractModel):
                 embeddings.append(self._spatial)
                 log("Input: Spatial")
 
-            # CROP
-            if config['inputs']['crop']:
-                self._crop_fc8 = tf.placeholder(tf.float32, [self.batch_size, 1000], name='crop_fc8')
-                embeddings.append(self._crop_fc8)
-                log("Input: Crop")
 
             # IMAGE
-            if config['inputs']['picture']:
-                self._picture_fc8 = tf.placeholder(tf.float32, [self.batch_size, 1000], name='picture_fc8')
-                embeddings.append(self._picture_fc8)
+            if config['inputs']['image']:
+                self._image = tf.placeholder(tf.float32, [self.batch_size] + config['crop']["dim"], name='image')
+
+                if len(config["image"]["dim"]) == 1:
+                    self.image_out = self._image
+                else:
+                    self.image_out = attention.create_attention(self._image, lstm_states, config["image"]["attention"])
+
+                embeddings.append(self.image_out)
                 log("Input: Image")
+
+
+            # CROP
+            if config['inputs']['crop']:
+                self._crop = tf.placeholder(tf.float32, [self.batch_size] + config['crop']["dim"], name='crop')
+
+                if len(config["crop"]["dim"]) == 1:
+                    self.crop_out = self._crop
+                else:
+                    self.crop_out = attention.create_attention(self._crop, lstm_states, config['crop']["attention"])
+
+                embeddings.append(self.crop_out)
+                log("Input: Crop")
+
 
             # Compute the final embedding
             emb = tf.concat(embeddings, 1)

@@ -19,17 +19,23 @@ def lazy_property(fn):
 
 class Game:
 
-    def __init__(self, id, object_id, picture, objects, qas, status):
+    def __init__(self, id, object_id, picture, objects, qas, status, image_loader, crop_loader):
         self.dialogue_id = id
         self.object_id = object_id
-        self.picture = Picture(picture["id"], picture["width"], picture["height"], picture["coco_url"])
+        self.picture = Picture(picture["id"],
+                               picture["width"],
+                               picture["height"],
+                               picture["coco_url"],
+                               image_loader=image_loader)
         self.objects = []
         for o in objects:
             new_obj = Object(o['id'],
                              o['category'],
                              o['category_id'],
                              Bbox(o['bbox'], picture["width"], picture["height"]),
-                             o['area'])
+                             o['area'],
+                             crop_loader=crop_loader
+                             )
 
             self.objects.append(new_obj)
             if o['id'] == object_id:
@@ -42,13 +48,23 @@ class Game:
 
 
 class Picture:
-    def __init__(self, id, width, height, url):
+    def __init__(self, id, width, height, url, image_loader):
         self.id = id
         self.width = width
         self.height = height
         self.url = url
         self.path = None
         self.fc8 = None
+
+        if image_loader is not None:
+            self.image_loader = image_loader.preload(id)
+
+    def get_image(self):
+        return self.image_loader.get_image(self.id)
+
+
+
+
 
 class Bbox:
     def __init__(self, bbox, im_width, im_height):
@@ -69,26 +85,27 @@ class Bbox:
 
 
 class Object:
-    def __init__(self, id, category, category_id, bbox, area):
+    def __init__(self, id, category, category_id, bbox, area, crop_loader):
         self.id = id
         self.category = category
         self.category_id = category_id
         self.bbox = bbox
         self.area = area
-        self.fc8 = None
+
+        if crop_loader is not None:
+            self.crop_loader = crop_loader.preload(id)
+
+    def get_crop(self):
+        return self.crop_loader.get_image(self.id)
+
 
 
 
 class Dataset(AbstractDataset):
     """Loads the dataset."""
-    def __init__(self, folder, which_set, fc8_img=None, fc8_crop=None, image_folder=None):
+    def __init__(self, folder, which_set, image_loader=None, crop_loader=None):
         file = '{}/guesswhat.{}.jsonl.gz'.format(folder, which_set)
         games = []
-
-        if image_folder is not None:
-            self.image_folder = image_folder
-        else:
-            self.image_folder = os.path.join(folder, 'guesswhat_images')
 
         with gzip.open(file) as f:
             for line in f:
@@ -100,21 +117,16 @@ class Dataset(AbstractDataset):
                          objects=game['objects'],
                          qas=game['qas'],
                          picture=game['image'],
-                         status=game['status'])
+                         status=game['status'],
+                         image_loader=image_loader,
+                         crop_loader=crop_loader)
 
-                if fc8_img:
-                    g.picture.fc8 = fc8_img[g.picture.id]
-
-                if fc8_crop:
-                    g.object.fc8 = fc8_crop[g.picture.id]
-
-                # TODO: check if path exist?
-                g.picture.path = os.path.join(self.image_folder, str(g.picture.id) + '.jpg')
                 games.append(g)
 
                 # if len(games) > 200: break
 
         super(Dataset, self).__init__(games)
+
 
 class OracleDataset(AbstractDataset):
     """
@@ -127,6 +139,10 @@ class OracleDataset(AbstractDataset):
             new_games += self.split(g)
         self.image_folder = dataset.image_folder
         super(OracleDataset, self).__init__(new_games)
+
+    @classmethod
+    def load(cls, folder, which_set, image_loader=None, crop_loader=None):
+        return cls(Dataset(folder, which_set, image_loader, crop_loader))
 
     def split(self, game):
         games = []
