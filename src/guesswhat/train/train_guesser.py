@@ -1,6 +1,4 @@
 import argparse
-import collections
-import json
 import logging
 import os
 import pickle
@@ -31,9 +29,12 @@ parser = argparse.ArgumentParser('Guesser network baseline!')
 
 parser.add_argument("-data_dir", type=str, help="Directory with data")
 parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
+parser.add_argument("-image_dir", type=str, help='Directory with images')
 parser.add_argument("-config", type=str, help="Configuration file")
-parser.add_argument("-from_checkpoint", type=bool, help="Start from checkpoint?")
-parser.add_argument("-gpu_ratio", type=float, default=1., help="How muany GPU ram is required? (ratio)")
+parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
+parser.add_argument("-continue_exp", type=bool, default=False, help="Continue previously started experiment?")
+parser.add_argument("-gpu_ratio", type=float, default=1., help="How many GPU ram is required? (ratio)")
+parser.add_argument("-no_thread", type=int, default=1, help="No thread to load batch")
 
 args = parser.parse_args()
 config, exp_identifier, save_path = load_config(args.config, args.exp_dir)
@@ -46,8 +47,8 @@ logger = logging.getLogger()
 
 # Load image
 logger.info('Loading images..')
-image_loader = get_img_loader(config, 'image')
-crop_loader = get_img_loader(config, 'crop')
+image_loader = None  # get_img_loader(config, 'image', args.image_dir)
+crop_loader = None  # get_img_loader(config, 'crop', args.image_dir)
 
 # Load data
 logger.info('Loading data..')
@@ -61,7 +62,7 @@ tokenizer = GWTokenizer(os.path.join(args.data_dir, 'dict.json'))
 
 # Build Network
 logger.info('Building network..')
-network = GuesserNetwork(config, num_words=tokenizer.no_words)
+network = GuesserNetwork(config["model"], num_words=tokenizer.no_words)
 
 # Build Optimizer
 logger.info('Building optimizer..')
@@ -95,8 +96,8 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
     best_train_err = None
 
     # create training tools
-    evaluator = Evaluator(sources, network.scope_name)
-    batchifier = GuesserBatchifier(tokenizer, sources, **config['model']['crop'])
+    evaluator = Evaluator(sources, network.scope_name, network=network, tokenizer=tokenizer)
+    batchifier = GuesserBatchifier(tokenizer, sources)
 
     for t in range(start_epoch, no_epoch):
         logger.info('Epoch {}..'.format(t + 1))

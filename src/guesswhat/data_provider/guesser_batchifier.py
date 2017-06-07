@@ -6,7 +6,7 @@ from generic.data_provider.batchifier import AbstractBatchifier
 
 from generic.data_provider.image_preprocessors import (resize_image, get_spatial_feat,
                                                          scaled_crop_and_pad)
-from generic.data_provider.nlp_utils import padder
+from generic.data_provider.nlp_utils import padder, padder_3d
 
 answer_dict = \
     {'Yes': np.array([1, 0, 0], dtype=np.int32),
@@ -57,12 +57,8 @@ class GuesserBatchifier(AbstractBatchifier):
 
             tokens += [self.tokenizer.stop_dialogue]  # Add STOP token
 
-            batch["padded_tokens"].append(tokens)
+            batch["dialogues"].append(tokens)
             all_answer_indices.append(answer_indices)
-
-            # Picture fc8 features
-            if game.picture.fc8 is not None:
-                batch['image'][i, :] = game.picture.get_image()
 
             # Object embedding
             obj_spats, obj_cats = [], []
@@ -73,7 +69,7 @@ class GuesserBatchifier(AbstractBatchifier):
                 if obj.id == game.object_id:
                     batch['targets_category'].append(spatial)
                     batch['targets_spatial'].append(category)
-                    batch['targets'].append(index)
+                    batch['targets_index'].append(index)
 
                 obj_spats.append(spatial)
                 obj_cats.append(category)
@@ -83,7 +79,7 @@ class GuesserBatchifier(AbstractBatchifier):
 
 
         # Pad dialogue tokens tokens
-        batch['padded_tokens'], batch['seq_length'] = padder(batch['padded_tokens'], padding_symbol=self.tokenizer.padding_token)
+        batch['dialogues'], batch['seq_length'] = padder(batch['dialogues'], padding_symbol=self.tokenizer.padding_token)
         seq_length = batch['seq_length']
         max_length = max(seq_length)
 
@@ -93,12 +89,12 @@ class GuesserBatchifier(AbstractBatchifier):
             batch['padding_mask'][i, (seq_length[i] + 1):] = 0.
 
         # Compute the answer mask
-        answer_mask = np.ones((batch_size, max_length), dtype=np.float32)
+        batch['answer_mask'] = np.ones((batch_size, max_length), dtype=np.float32)
         for i in range(batch_size):
-            answer_mask[i, all_answer_indices[i]] = 0.
+            batch['answer_mask'][i, all_answer_indices[i]] = 0.
 
         # Pad objects
-        batch['obj_spats'], obj_length = padder(batch['obj_spats'])
+        batch['obj_spats'], obj_length = padder_3d(batch['obj_spats'])
         batch['obj_cats'], obj_length = padder(batch['obj_cats'])
 
         # Compute the object mask
@@ -106,7 +102,7 @@ class GuesserBatchifier(AbstractBatchifier):
 
         batch['obj_mask'] = np.zeros((batch_size, max_objects), dtype=np.float32)
         for i in range(batch_size):
-            batch['obj_mask'][i, :len(obj_length[i])] = 1.0
+            batch['obj_mask'][i, :obj_length[i]] = 1.0
 
         return batch
 

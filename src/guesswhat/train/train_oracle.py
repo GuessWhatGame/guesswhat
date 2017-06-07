@@ -51,8 +51,8 @@ logger = logging.getLogger()
 
 # Load image
 logger.info('Loading images..')
-image_loader = get_img_loader(config, 'image')
-crop_loader = get_img_loader(config, 'crop')
+image_loader = get_img_loader(config, 'image', args.image_dir)
+crop_loader = get_img_loader(config, 'crop', args.image_dir)
 
 
 # Load data

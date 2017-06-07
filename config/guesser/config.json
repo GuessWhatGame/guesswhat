@@ -1,0 +1,22 @@
+{
+  "model": {
+    "fc8_dim": 1000,
+    "word_emb_dim": 512,
+    "num_lstm_units": 512,
+    "cat_emb_dim": 256,
+    "obj_mlp_units": 512,
+    "dialog_emb_dim": 512,
+    "spat_dim": 8,
+    "no_categories": 90
+  },
+
+  "optimizer": {
+    "no_epoch": 20,
+    "learning_rate": 1e-4,
+    "batch_size": 64,
+    "clip_val": 5
+  },
+
+  "seed": 1
+
+}

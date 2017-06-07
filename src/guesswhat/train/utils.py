@@ -42,13 +42,13 @@ def load_checkpoint(sess, saver, args, save_path):
     return 0
 
 
-def get_img_loader(config, input_type):
+def get_img_loader(config, input_type, image_dir):
     # load images
     loader = None
-    if config['inputs'][input_type]:
+    if config['inputs'].get(input_type, False):
         use_conv = len(config[input_type]["dim"]) > 1
         if use_conv:
-            loader = ConvLoader(args.image_dir)
+            loader = ConvLoader(image_dir)
         else:
-            loader = fcLoader(args.image_dir)
+            loader = fcLoader(image_dir)
     return loader

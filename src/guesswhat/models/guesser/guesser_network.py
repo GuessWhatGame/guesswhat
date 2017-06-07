@@ -17,57 +17,57 @@ class GuesserNetwork(AbstractModel):
             # PICTURE
             # self.picture_fc8 = tf.placeholder(
             #     tf.float32,
-            #     [mini_batch_size, config['model']['fc8_dim']],
+            #     [mini_batch_size, config['fc8_dim']],
             #     name='picture_fc8')
 
             # FLATTEN dialogue_lstm
-            self.dialogues = tf.placeholder(tf.int32, [mini_batch_size, None], name='question')
+            self.dialogues = tf.placeholder(tf.int32, [mini_batch_size, None], name='dialogues')
             self.seq_length = tf.placeholder(tf.int32, [mini_batch_size], name='seq_length')
 
             # OBJECTS
-            self.mask = tf.placeholder(tf.float32, [mini_batch_size, None], name='mask')
+            self.mask = tf.placeholder(tf.float32, [mini_batch_size, None], name='obj_mask')
             self.obj_cats = tf.placeholder(tf.int32, [mini_batch_size, None], name='obj_cats')
-            self.obj_spats = tf.placeholder(tf.float32, [mini_batch_size, None, config['model']['spat_dim']], name='obj_spats')
+            self.obj_spats = tf.placeholder(tf.float32, [mini_batch_size, None, config['spat_dim']], name='obj_spats')
 
             self.object_cats_emb = utils.get_embedding(
                 self.obj_cats,
-                config['no_categories'],
-                config['model']['cat_emb_dim'],
+                config['no_categories']+1,
+                config['cat_emb_dim'],
                 scope='cat_embedding')
 
             # TARGETS
-            self.targets = tf.placeholder(tf.int32, [mini_batch_size])
+            self.targets = tf.placeholder(tf.int32, [mini_batch_size], name="targets_index")
 
             self.objects = tf.concat([self.object_cats_emb, self.obj_spats], axis=2)
 
-            obj_inp_dim = config['model']['cat_emb_dim'] + config['model']['spat_dim']
+            obj_inp_dim = config['cat_emb_dim'] + config['spat_dim']
             self.flat_objects_inp = tf.reshape(self.objects, [-1, obj_inp_dim])
 
             with tf.variable_scope('obj_mlp'):
                 h1 = utils.fully_connected(
                     self.flat_objects_inp,
-                    config['model']['obj_mlp_units'],
+                    config['obj_mlp_units'],
                     activation='relu',
                     scope='l1')
                 h2 = utils.fully_connected(
                     h1,
-                    config['model']['dialog_emb_dim'],
+                    config['dialog_emb_dim'],
                     activation='relu',
                     scope='l2')
 
-            obj_embs = tf.reshape(h2, [-1, tf.shape(self.obj_cats)[1], config['model']['dialog_emb_dim']])
+            obj_embs = tf.reshape(h2, [-1, tf.shape(self.obj_cats)[1], config['dialog_emb_dim']])
 
             # Compute the word embedding
             input_words = utils.get_embedding(self.dialogues,
                                               n_words=num_words,
-                                              n_dim=config['model']['word_emb_dim'],
+                                              n_dim=config['word_emb_dim'],
                                               scope="input_word_embedding")
 
-            last_states = rnn.variable_length_LSTM(input_words,
-                                               num_hidden=config['model']['num_lstm_units'],
+            last_states, _ = rnn.variable_length_LSTM(input_words,
+                                               num_hidden=config['num_lstm_units'],
                                                seq_length=self.seq_length)
 
-            last_states = tf.reshape(last_states, [-1, config['model']['num_lstm_units'], 1])
+            last_states = tf.reshape(last_states, [-1, config['num_lstm_units'], 1])
             scores = tf.matmul(obj_embs, last_states)
             scores = tf.reshape(scores, [-1, tf.shape(self.obj_cats)[1]])
 
