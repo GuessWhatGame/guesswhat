@@ -1,0 +1,50 @@
+{
+  "inputs": {
+    "question": true,
+    "category": true,
+    "spatial": true,
+    "crop": false,
+    "picture": false
+  },
+
+  "model": {
+    "no_words": 4901,
+    "question": {
+      "no_LSTM_hiddens": 512,
+      "embedding_dim": 300
+    },
+
+    "category": {
+      "n_categories": 90,
+      "embedding_dim": 512
+    },
+
+    "MLP": {
+      "num_hiddens": 512
+    },
+
+    "image": {
+      "width": 224,
+      "height": 224,
+      "channel": 3
+    },
+
+    "crop": {
+      "crop_width": 224,
+      "crop_height": 224,
+      "channel": 3,
+      "scale": 1.1
+    }
+
+  },
+
+  "optimizer": {
+    "no_epoch": 20,
+    "learning_rate": 1e-4,
+    "batch_size": 64,
+    "clip_val": 5
+  },
+
+  "status": ["success"],
+  "seed": -1
+}
