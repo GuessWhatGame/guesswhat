@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from generic.tensorflow import rnn, mlp, attention
+from generic.tensorflow import rnn, utils, attention
 from generic.tensorflow.abstract_model import AbstractModel
 
 
@@ -8,7 +8,6 @@ class OracleNetwork(AbstractModel):
 
     def __init__(self, config, num_words, log=print, device='', reuse=False):
         AbstractModel.__init__(self, "oracle", device=device)
-        self.config = config
 
         with tf.variable_scope(self.scope_name, reuse=reuse):
             embeddings = []
@@ -19,7 +18,7 @@ class OracleNetwork(AbstractModel):
             self._question = tf.placeholder(tf.int32, [self.batch_size, None], name='question')
             self._seq_length = tf.placeholder(tf.int32, [self.batch_size], name='seq_length')
 
-            word_emb = mlp.get_embedding(self._question,
+            word_emb = utils.get_embedding(self._question,
                                            n_words=num_words,
                                            n_dim=int(config['model']['question']["embedding_dim"]),
                                            scope="word_embedding")
@@ -33,7 +32,7 @@ class OracleNetwork(AbstractModel):
             if config['inputs']['category']:
                 self._category = tf.placeholder(tf.int32, [self.batch_size], name='category')
 
-                cat_emb = mlp.get_embedding(self._category,
+                cat_emb = utils.get_embedding(self._category,
                                               int(config['model']['category']["n_categories"]) + 1,  # we add the unkwon category
                                               int(config['model']['category']["embedding_dim"]),
                                               scope="cat_embedding")
@@ -74,7 +73,7 @@ class OracleNetwork(AbstractModel):
 
 
             # Compute the final embedding
-            emb = tf.concat(embeddings, 1)
+            emb = tf.concat(embeddings, axis=1)
 
             # OUTPUT
             num_classes = 3
@@ -82,13 +81,13 @@ class OracleNetwork(AbstractModel):
 
             with tf.variable_scope('mlp'):
                 num_hiddens = config['model']['MLP']['num_hiddens']
-                l1 = mlp.fully_connected(emb, num_hiddens, activation='relu', scope='l1')
+                l1 = utils.fully_connected(emb, num_hiddens, activation='relu', scope='l1')
 
-                self._pred = mlp.fully_connected(l1, num_classes, activation='softmax', scope='softmax')
+                self._pred = utils.fully_connected(l1, num_classes, activation='softmax', scope='softmax')
                 self._best_pred = tf.argmax(self._pred, axis=1)
 
-            self.loss = tf.reduce_mean(mlp.cross_entropy(self._pred, self._answer))
-            self.error = tf.reduce_mean(mlp.error(self._pred, self._answer))
+            self.loss = tf.reduce_mean(utils.cross_entropy(self._pred, self._answer))
+            self.error = tf.reduce_mean(utils.error(self._pred, self._answer))
 
 
             print('Model... Oracle build!')

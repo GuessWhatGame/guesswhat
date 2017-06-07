@@ -67,11 +67,11 @@ tokenizer = GWTokenizer(os.path.join(args.data_dir, 'dict.json'))
 
 # Build Network
 logger.info('Building network..')
-oracle = OracleNetwork(config, len(tokenizer.word2i))
+network = OracleNetwork(config, num_words=tokenizer.no_words)
 
 # Build Optimizer
 logger.info('Building optimizer..')
-optimizer, outputs = create_optimizer(oracle, oracle.loss, config)
+optimizer, outputs = create_optimizer(network, network.loss, config)
 
 
 ###############################
@@ -91,7 +91,7 @@ gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_ratio)
 
 with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
 
-    sources = oracle.get_sources(sess)
+    sources = network.get_sources(sess)
     logger.info("Sources: " + ', '.join(sources))
 
     sess.run(tf.global_variables_initializer())
@@ -101,7 +101,7 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
     best_train_err = None
 
     # create training tools
-    evaluator = Evaluator(sources, oracle.scope_name)
+    evaluator = Evaluator(sources, network.scope_name)
     oracle_batchifier = OracleBatchifier(tokenizer, sources, **config['model']['crop'])
 
     for t in range(start_epoch, no_epoch):
@@ -139,15 +139,3 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
                              batchifier=oracle_batchifier,
                              shuffle=True)
     [test_loss, test_error] = evaluator.process(sess, test_iterator, outputs)
-
-
-    # Experiment done; write results to experiment database (jsonl file)
-    with open(os.path.join(args.exp_dir, 'experiments.jsonl'), 'a') as f:
-        exp = dict()
-        exp['train_error'] = best_train_err
-        exp['test_error'] = test_error
-        exp['best_val_err'] = best_val_err
-        exp['identifier'] = exp_identifier
-
-        f.write(json.dumps(exp))
-        f.write('\n')
