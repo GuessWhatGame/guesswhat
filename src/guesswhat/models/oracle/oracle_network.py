@@ -67,7 +67,7 @@ class OracleNetwork(AbstractNetwork):
                 if len(config["crop"]["dim"]) == 1:
                     self.crop_out = self._crop
                 else:
-                    self.crop_out = attention.create_attention(self._crop, lstm_states, config['crop']["attention"])
+                    self.crop_out = attention.attention_factory(self._crop, lstm_states, config['crop']["attention"])
 
                 embeddings.append(self.crop_out)
                 log("Input: Crop")
@@ -84,11 +84,11 @@ class OracleNetwork(AbstractNetwork):
                 num_hiddens = config['model']['MLP']['num_hiddens']
                 l1 = utils.fully_connected(emb, num_hiddens, activation='relu', scope='l1')
 
-                self._pred = utils.fully_connected(l1, num_classes, activation='softmax', scope='softmax')
-                self._best_pred = tf.argmax(self._pred, axis=1)
+                self.pred = utils.fully_connected(l1, num_classes, activation='softmax', scope='softmax')
+                self.best_pred = tf.argmax(self.pred, axis=1)
 
-            self.loss = tf.reduce_mean(utils.cross_entropy(self._pred, self._answer))
-            self.error = tf.reduce_mean(utils.error(self._pred, self._answer))
+            self.loss = tf.reduce_mean(utils.cross_entropy(self.pred, self._answer))
+            self.error = tf.reduce_mean(utils.error(self.pred, self._answer))
 
 
             print('Model... Oracle build!')

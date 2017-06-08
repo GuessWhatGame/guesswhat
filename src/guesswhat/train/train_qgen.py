@@ -16,7 +16,11 @@ from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from generic.utils.config import load_config
 
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
+import guesswhat.models.qgen.qgen_beamsearch as bm
+
 from guesswhat.train.utils import get_img_loader, load_checkpoint
+
+
 
 if __name__ == '__main__':
 
@@ -98,12 +102,13 @@ if __name__ == '__main__':
         for t in range(0, config['optimizer']['no_epoch']):
 
             logger.info('Epoch {}..'.format(t + 1))
-            # one_sample = {
-            #     "picture_fc8": trainset.games[0].picture.fc8.reshape((1, 1000)),
-            # }
-            # # warning! the beam search stops after detecting the Stop token :)
-            # beam_sequence, tmp = network.eval_one_beam_search(sess, one_sample, env.tokenizer, max_depth=50)
-            # logger.info(tokenizer.decode(tmp))
+
+            # warning! the beam search stops after detecting the Stop token :)
+            beam_sequence, tmp = bm.eval_one_beam_search(sess, network,
+                                                         one_sample={ "image": [trainset.games[0].get_picture()] },
+                                                         tokenizer=tokenizer,
+                                                         max_depth = 50)
+            logger.info(tokenizer.decode(tmp))
 
             train_iterator = Iterator(trainset,
                                       batch_size=batch_size, pool=cpu_pool,

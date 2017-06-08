@@ -32,12 +32,14 @@ class QGenNetworkLSTM(AbstractNetwork):
             zero_state = tf.zeros([1, config['num_lstm_units']])  # default LSTM state is a zero-vector
             zero_state = tf.tile(zero_state, [tf.shape(self.image)[0], 1])  # trick to do a dynamic size 0 tensors
 
-            self.decoder_zero_state_c = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']])
-            self.decoder_zero_state_h = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']])
+            self.decoder_zero_state_c = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="stace_c")
+            self.decoder_zero_state_h = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="stace_h")
             decoder_initial_state = tf.contrib.rnn.LSTMStateTuple(c=self.decoder_zero_state_c, h=self.decoder_zero_state_h)
 
             # Misc
             self.is_training = tf.placeholder(tf.bool, name='is_training')
+            self.greedy = tf.placeholder_with_default(False, shape=(), name="is_greedy") # use for graph
+            self.samples = None
 
             # remove last token
             input_dialogues = self.dialogues[:, :-1]
@@ -64,9 +66,9 @@ class QGenNetworkLSTM(AbstractNetwork):
 
             # Reduce the embedding size of the image
             with tf.variable_scope('picture_embedding'):
-                picture_emb = utils.fully_connected(self.image_out,
+                self.picture_emb = utils.fully_connected(self.image_out,
                                                     config['picture_embedding_size'])
-                picture_emb = tf.expand_dims(picture_emb, 1)
+                picture_emb = tf.expand_dims(self.picture_emb, 1)
                 picture_emb = tf.tile(picture_emb, [1, tf.shape(input_dialogues)[1], 1])
 
             # Compute the question embedding
@@ -170,10 +172,6 @@ class QGenNetworkLSTM(AbstractNetwork):
             #
             #     return optimizer.apply_gradients(clipped_gvs)
 
-            # lrt = config['optimizer']['learning_rate']
-            # with tf.variable_scope('ml_optimizer'):
-            #     variables = [v for v in tf.trainable_variables() if 'rl_baseline' not in v.name]
-            #     self.ml_optimize = optimize(self.ml_loss, variables, config, tf.train.AdamOptimizer(learning_rate=lrt))
 
             # # We directly minimize the approximate score function and we let Tensorflow compute the gradient
             # with tf.variable_scope('policy_gradient_optimizer'):
@@ -182,8 +180,100 @@ class QGenNetworkLSTM(AbstractNetwork):
             #     self.pg_optimize = optimize(self.policy_gradient_loss, pg_variables, config, tf.train.GradientDescentOptimizer(learning_rate=lrt))
             #     self.baseline_optimize = optimize(self.baseline_loss, baseline_variables, config, tf.train.GradientDescentOptimizer(learning_rate=1e-3))
 
+
     def get_outputs(self):
         return [self.loss]
+
+    def build_sampling_graph(self, config, tokenizer, max_length=12):
+
+        if self.samples is not None:
+            return
+
+        # define stopping conditions
+        def stop_cond(states_c, states_h, tokens, seq_length, stop_indicator):
+
+            has_unfinished_dialogue = tf.less(tf.shape(tf.where(stop_indicator))[0],tf.shape(stop_indicator)[0]) # TODO use "any" instead of checking shape
+            has_not_reach_size_limit = tf.less(tf.reduce_max(seq_length), max_length)
+
+            return tf.logical_and(has_unfinished_dialogue,has_not_reach_size_limit)
+
+
+        # define one_step sampling
+        with tf.variable_scope(self.scope_name):
+            stop_token = tf.constant(tokenizer.stop_token)
+            stop_dialogue_token = tf.constant(tokenizer.stop_dialogue)
+
+        def step(state_c, state_h, tokens, seq_length, stop_indicator):
+            input = tf.gather(tokens, tf.shape(tokens)[0] - 1)
+
+            # Look for new finish dialogue
+            is_stop_token = tf.equal(input, stop_token)
+            is_stop_dialogue_token = tf.equal(input, stop_dialogue_token)
+            is_stop = tf.logical_or(is_stop_token, is_stop_dialogue_token)
+            stop_indicator = tf.logical_or(stop_indicator, is_stop)  # flag to false new finished dialogue
+
+            # increment seq_length when the dialogue is not over
+            seq_length = tf.where(stop_indicator, seq_length, tf.add(seq_length, 1))
+
+            # compute the next words. TODO: factorize with qgen.. but how?!
+            with tf.variable_scope(self.scope_name, reuse=True):
+                word_emb = utils.get_embedding(
+                    input,
+                    n_words=tokenizer.no_words,
+                    n_dim=config['word_embedding_size'],
+                    scope="word_embedding",
+                    reuse=True)
+
+                inp_emb = tf.concat([word_emb, self.picture_emb], axis=1)
+                with tf.variable_scope("word_decoder"):
+                    lstm_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(
+                        config['num_lstm_units'],
+                        layer_norm=False,
+                        dropout_keep_prob=1.0)
+
+                    state = tf.contrib.rnn.LSTMStateTuple(c=state_c, h=state_h)
+                    out, state = lstm_cell(inp_emb, state)
+
+                    # store/update the state when the dialogue is not finished
+                    cond = tf.greater_equal(seq_length, tf.subtract(tf.reduce_max(seq_length), 1))
+                    state_c = tf.where(cond, state.c, state_c)
+                    state_h = tf.where(cond, state.h, state_h)
+
+                with tf.variable_scope('decoder_output'):
+                    output = utils.fully_connected(state_h, tokenizer.no_words, reuse=True)
+
+                    sampled_tokens = tf.cond(self.greedy,
+                                             lambda: tf.argmax(output, 1),
+                                             lambda: tf.reshape(tf.multinomial(output, 1), [-1])
+                                             )
+
+            tokens = tf.concat([tokens, tf.expand_dims(sampled_tokens, 0)], axis=0) # check axis!
+
+            return state_c, state_h, tokens, seq_length, stop_indicator
+
+        with tf.variable_scope(self.scope_name):
+
+            # initialialize sequences
+            batch_size = tf.shape(self.seq_length)[0]
+            seq_length = tf.fill([batch_size], 0)
+            stop_indicator = tf.fill([batch_size], False)
+
+            transpose_dialogue = tf.transpose(self.dialogues, perm=[1,0])  # check transpose!
+
+            self.samples = tf.while_loop(stop_cond, step, [self.decoder_zero_state_c,
+                                                           self.decoder_zero_state_h,
+                                                           transpose_dialogue,
+                                                           seq_length,
+                                                           stop_indicator],
+                                         shape_invariants=[self.decoder_zero_state_c.get_shape(),
+                                                           self.decoder_zero_state_h.get_shape(),
+                                                           tf.TensorShape([None, None]),
+                                                           seq_length.get_shape(),
+                                                           stop_indicator.get_shape()])
+
+
+
+
 
 
 
