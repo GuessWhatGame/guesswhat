@@ -1,0 +1,16 @@
+{
+  "optimizer": {
+    "no_epoch": 100,
+    "learning_rate": 1e-3,
+    "batch_size": 64,
+    "clip_val": 5
+  },
+
+  "loop": {
+    "max_question": 8,
+    "max_depth" : 12
+  },
+
+  "seed": 1
+
+}

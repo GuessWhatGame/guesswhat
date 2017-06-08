@@ -65,7 +65,7 @@ def eval_one_beam_search(sess, qgen, one_sample, tokenizer, initial_beam=None, m
     # Check that one_sample has a single element and there is no padding in word history
 
     if initial_beam is None:
-        assert one_sample["picture_fc8"].shape[0] == 1
+        assert one_sample["images"].shape[0] == 1
         assert "padded_tokens" not in one_sample or one_sample["padded_tokens"][0][-1] != tokenizer.padding_token
 
         # Create the first beam token that will generate the sequence
@@ -91,7 +91,7 @@ def eval_one_beam_search(sess, qgen, one_sample, tokenizer, initial_beam=None, m
             # evaluate next_step
             softmax, decoder_state = sess.run([qgen.softmax_output, qgen.decoder_state],
                                               feed_dict={
-                                                  qgen.picture_fc8: one_sample["image"],
+                                                  qgen.picture_fc8: one_sample["images"],
                                                   qgen.dialogues: dialogue_history,
                                                   qgen.seq_length: [dialogue_history.shape[1]],
                                                   qgen.decoder_zero_state_c: beam_token.decoder_state.c,

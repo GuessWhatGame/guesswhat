@@ -9,7 +9,7 @@ from guesswhat.models.looper.tools import clear_after_stop_dialogue, list_to_pad
 
 
 class BasicLooper(object):
-    def __init__(self, oracle, qgen, guesser, tokenizer, config):
+    def __init__(self, config, oracle, qgen, guesser, tokenizer):
         self.storage = []
 
         self.tokenizer = tokenizer
@@ -24,7 +24,7 @@ class BasicLooper(object):
         self.guesser = GuesserWrapper(guesser)
         self.qgen = QGenWrapper(qgen, config["model"], tokenizer, max_length=self.max_depth)
 
-    def __execute__(self, sess, iterator, optimizer=list(), greedy=False, store_games=False):
+    def process(self, sess, iterator, optimizer=list(), greedy=False, store_games=False):
 
         # initialize the wrapper
         self.qgen.initialize(sess)
@@ -115,7 +115,7 @@ class BasicLooper(object):
 
         sess.run(optimizer,
                  feed_dict={
-                     qgen.picture_fc8: game_data["images"],
+                     qgen.images: game_data["images"],
                      qgen.dialogues: padded_dialogue,
                      qgen.seq_length: seq_length,
                      qgen.padding_mask: padding_mask,

@@ -7,6 +7,7 @@ from generic.tf_models import rnn, utils, attention
 
 class QGenNetworkLSTM(AbstractNetwork):
 
+
     #TODO: add dropout
     def __init__(self, config, num_words, policy_gradient, device='', reuse=False):
         AbstractNetwork.__init__(self, "qgen", device=device)
@@ -17,7 +18,7 @@ class QGenNetworkLSTM(AbstractNetwork):
             mini_batch_size = None
 
             # Picture
-            self.image = tf.placeholder(tf.float32, [mini_batch_size] + config['image']["dim"], name='images')
+            self.images = tf.placeholder(tf.float32, [mini_batch_size] + config['image']["dim"], name='images')
 
             # Question
             self.dialogues = tf.placeholder(tf.int32, [mini_batch_size, None], name='dialogues')
@@ -30,7 +31,7 @@ class QGenNetworkLSTM(AbstractNetwork):
 
             # DECODER Hidden state (for beam search)
             zero_state = tf.zeros([1, config['num_lstm_units']])  # default LSTM state is a zero-vector
-            zero_state = tf.tile(zero_state, [tf.shape(self.image)[0], 1])  # trick to do a dynamic size 0 tensors
+            zero_state = tf.tile(zero_state, [tf.shape(self.images)[0], 1])  # trick to do a dynamic size 0 tensors
 
             self.decoder_zero_state_c = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="stace_c")
             self.decoder_zero_state_h = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="stace_h")
@@ -59,9 +60,9 @@ class QGenNetworkLSTM(AbstractNetwork):
 
             # image processing
             if len(config["image"]["dim"]) == 1:
-                self.image_out = self.image
+                self.image_out = self.images
             else:
-                self.image_out = attention.attention_factory(self.image, None, "none") #TODO: improve by using the previous lstm state?
+                self.image_out = attention.attention_factory(self.images, None, "none") #TODO: improve by using the previous lstm state?
 
 
             # Reduce the embedding size of the image

@@ -104,11 +104,11 @@ if __name__ == '__main__':
             logger.info('Epoch {}..'.format(t + 1))
 
             # warning! the beam search stops after detecting the Stop token :)
-            beam_sequence, tmp = bm.eval_one_beam_search(sess, network,
-                                                         one_sample={ "image": [trainset.games[0].get_picture()] },
-                                                         tokenizer=tokenizer,
-                                                         max_depth = 50)
-            logger.info(tokenizer.decode(tmp))
+            # beam_sequence, tmp = bm.eval_one_beam_search(sess, network,
+            #                                              one_sample={ "images": [trainset.games[0].picture.get_image()] },
+            #                                              tokenizer=tokenizer,
+            #                                              max_depth = 50)
+            # logger.info(tokenizer.decode(tmp))
 
             train_iterator = Iterator(trainset,
                                       batch_size=batch_size, pool=cpu_pool,
@@ -139,7 +139,6 @@ if __name__ == '__main__':
                                  batch_size=batch_size*2,
                                  batchifier=batchifier,
                                  shuffle=True)
-        [test_loss, test_error] = evaluator.process(sess, test_iterator, outputs)
+        [test_loss] = evaluator.process(sess, test_iterator, outputs)
 
         logger.info("Testing loss: {}".format(test_loss))
-        logger.info("Testing error: {}".format(test_error))
