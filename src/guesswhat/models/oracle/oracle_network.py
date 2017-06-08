@@ -54,7 +54,7 @@ class OracleNetwork(AbstractNetwork):
                 if len(config["image"]["dim"]) == 1:
                     self.image_out = self._image
                 else:
-                    self.image_out = attention.create_attention(self._image, lstm_states, config["image"]["attention"])
+                    self.image_out = attention.attention_factory(self._image, lstm_states, config["image"]["attention"])
 
                 embeddings.append(self.image_out)
                 log("Input: Image")

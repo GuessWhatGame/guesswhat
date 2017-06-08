@@ -12,7 +12,7 @@ class GuesserNetwork(AbstractNetwork):
 
         mini_batch_size = None
 
-        with tf.variable_scope(self.scope_name):
+        with tf.variable_scope(self.scope_name, reuse=reuse):
 
             # Dialogues
             self.dialogues = tf.placeholder(tf.int32, [mini_batch_size, None], name='dialogues')

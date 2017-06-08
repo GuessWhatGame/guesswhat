@@ -15,7 +15,7 @@ answer_dict = \
     }
 
 
-class GuesserBatchifier(AbstractBatchifier):
+class QuestionerBatchifier(AbstractBatchifier):
 
     def __init__(self, tokenizer, sources, status=list(), **kwargs):
         self.tokenizer = tokenizer
@@ -76,6 +76,12 @@ class GuesserBatchifier(AbstractBatchifier):
             batch['obj_spats'].append(obj_spats)
             batch['obj_cats'].append(obj_cats)
 
+            # image
+            img = game.picture.get_image()
+            if img is not None:
+                if "images" not in batch:  # initialize an empty array for better memory consumption
+                    batch["images"] = np.zeros((batch_size,) + img.shape)
+                batch["images"][i] = img
 
 
         # Pad dialogue tokens tokens
@@ -99,7 +105,6 @@ class GuesserBatchifier(AbstractBatchifier):
 
         # Compute the object mask
         max_objects = max(obj_length)
-
         batch['obj_mask'] = np.zeros((batch_size, max_objects), dtype=np.float32)
         for i in range(batch_size):
             batch['obj_mask'][i, :obj_length[i]] = 1.0

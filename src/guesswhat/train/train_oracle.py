@@ -14,7 +14,7 @@ from generic.tf_utils.optimizer import create_optimizer
 
 from guesswhat.data_provider.guesswhat_dataset import OracleDataset
 from guesswhat.data_provider.oracle_batchifier import OracleBatchifier
-from guesswhat.data_provider.nlp_preprocessors import GWTokenizer
+from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from generic.utils.config import load_config
 
 from guesswhat.models.oracle.oracle_network import OracleNetwork
@@ -48,8 +48,11 @@ if __name__ == '__main__':
 
     # Load image
     logger.info('Loading images..')
-    image_loader = get_img_loader(config, 'image', args.image_dir)
-    crop_loader = get_img_loader(config, 'crop', args.image_dir)
+    image_loader, crop_loader = None, None
+    if config['inputs'].get('image', False):
+        image_loader = get_img_loader(config['image'], args.image_dir) #TODO improve interface
+    if config['inputs'].get('crop', False):
+        crop_loader = get_img_loader(config['crop'], args.image_dir)
 
     # Load data
     logger.info('Loading data..')

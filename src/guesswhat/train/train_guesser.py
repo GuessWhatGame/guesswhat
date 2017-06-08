@@ -11,8 +11,8 @@ from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
 
 from guesswhat.data_provider.guesswhat_dataset import Dataset
-from guesswhat.data_provider.guesser_batchifier import GuesserBatchifier
-from guesswhat.data_provider.nlp_preprocessors import GWTokenizer
+from guesswhat.data_provider.questioner_batchifier import QuestionerBatchifier
+from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from generic.utils.config import load_config
 
 from guesswhat.models.guesser.guesser_network import GuesserNetwork
@@ -45,8 +45,8 @@ if __name__ == '__main__':
 
     # Load image
     logger.info('Loading images..')
-    image_loader = None  # get_img_loader(config, 'image', args.image_dir)
-    crop_loader = None  # get_img_loader(config, 'crop', args.image_dir)
+    image_loader = None  # get_img_loader(config['model']['image'], args.image_dir)
+    crop_loader = None  # get_img_loader(config['model']['crop'], args.image_dir)
 
     # Load data
     logger.info('Loading data..')
@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
         # create training tools
         evaluator = Evaluator(sources, network.scope_name, network=network, tokenizer=tokenizer)
-        batchifier = GuesserBatchifier(tokenizer, sources, status=('success',))
+        batchifier = QuestionerBatchifier(tokenizer, sources, status=('success',))
 
         for t in range(start_epoch, no_epoch):
             logger.info('Epoch {}..'.format(t + 1))

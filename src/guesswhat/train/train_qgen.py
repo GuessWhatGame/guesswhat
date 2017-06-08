@@ -11,8 +11,8 @@ from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
 
 from guesswhat.data_provider.guesswhat_dataset import Dataset
-from guesswhat.data_provider.guesser_batchifier import GuesserBatchifier
-from guesswhat.data_provider.nlp_preprocessors import GWTokenizer
+from guesswhat.data_provider.questioner_batchifier import QuestionerBatchifier
+from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from generic.utils.config import load_config
 
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     # Load image
     logger.info('Loading images..')
-    image_loader = get_img_loader(config, 'image', args.image_dir)
+    image_loader = get_img_loader(config['model']['image'], args.image_dir)
     crop_loader = None  # get_img_loader(config, 'crop', args.image_dir)
 
     # Load data
@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     # Build Network
     logger.info('Building network..')
-    network = QGenNetworkLSTM(config["model"], num_words=tokenizer.no_words, use_baseline=False)
+    network = QGenNetworkLSTM(config["model"], num_words=tokenizer.no_words, policy_gradient=False)
 
     # Build Optimizer
     logger.info('Building optimizer..')
@@ -89,12 +89,10 @@ if __name__ == '__main__':
         sess.run(tf.global_variables_initializer())
         start_epoch = load_checkpoint(sess, saver, args, save_path)
 
-        best_val_err = 1e5
-        best_train_err = None
 
         # create training tools
         evaluator = Evaluator(sources, network.scope_name, network=network, tokenizer=tokenizer)
-        batchifier = GuesserBatchifier(tokenizer, sources, status=('success',))
+        batchifier = QuestionerBatchifier(tokenizer, sources, status=('success',))
 
         best_val_loss = 1e5
         for t in range(0, config['optimizer']['no_epoch']):
@@ -111,22 +109,20 @@ if __name__ == '__main__':
                                       batch_size=batch_size, pool=cpu_pool,
                                       batchifier=batchifier,
                                       shuffle=True)
-            train_loss, train_error = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer])
+            [train_loss] = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer])
 
             valid_iterator = Iterator(validset, pool=cpu_pool,
                                       batch_size=batch_size*2,
                                       batchifier=batchifier,
                                       shuffle=False)
-            valid_loss, valid_error = evaluator.process(sess, valid_iterator, outputs=outputs)
+            [valid_loss] = evaluator.process(sess, valid_iterator, outputs=outputs)
 
             logger.info("Training loss: {}".format(train_loss))
-            logger.info("Training error: {}".format(train_error))
             logger.info("Validation loss: {}".format(valid_loss))
-            logger.info("Validation error: {}".format(valid_error))
 
-            if valid_error < best_val_err:
-                best_train_err = train_error
-                best_val_err = valid_error
+            if valid_loss < best_val_loss:
+                best_train_loss = train_loss
+                best_val_loss = valid_loss
                 saver.save(sess, save_path.format('params.ckpt'))
                 logger.info("Guesser checkpoint saved...")
 
