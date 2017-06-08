@@ -1,13 +1,14 @@
 import tensorflow as tf
 
-from generic.tensorflow import rnn, utils, attention
-from generic.tensorflow.abstract_model import AbstractModel
+from generic.tf_models import rnn, utils, attention
+
+from generic.tf_utils.abstract_network import AbstractNetwork
 
 
-class OracleNetwork(AbstractModel):
+class OracleNetwork(AbstractNetwork):
 
     def __init__(self, config, num_words, log=print, device='', reuse=False):
-        AbstractModel.__init__(self, "oracle", device=device)
+        AbstractNetwork.__init__(self, "oracle", device=device)
 
         with tf.variable_scope(self.scope_name, reuse=reuse):
             embeddings = []

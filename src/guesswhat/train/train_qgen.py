@@ -1,14 +1,22 @@
 import argparse
-import json
+import logging
 import os
+import pickle
+from multiprocessing import Pool
 
 import tensorflow as tf
 
+from generic.data_provider.iterator import Iterator
+from generic.tf_utils.evaluator import Evaluator
+from generic.tf_utils.optimizer import create_optimizer
+
+from guesswhat.data_provider.guesswhat_dataset import Dataset
+from guesswhat.data_provider.guesser_batchifier import GuesserBatchifier
+from guesswhat.data_provider.nlp_preprocessors import GWTokenizer
+from generic.utils.config import load_config
+
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
-
-import guesswhat.data_provider as provider
-
-from tqdm import tqdm
+from guesswhat.train.utils import get_img_loader, load_checkpoint
 
 if __name__ == '__main__':
 
@@ -16,132 +24,121 @@ if __name__ == '__main__':
     #  LOAD CONFIG
     #############################
 
-    parser = argparse.ArgumentParser('Oracle network baseline!')
+    parser = argparse.ArgumentParser('QGen network baseline!')
 
     parser.add_argument("-data_dir", type=str, help="Directory with data")
     parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
-    parser.add_argument("-config", type=str, help="Configuration file")
-    parser.add_argument("-seed", type=int, help='Seed', default=-1)
-    parser.add_argument("-from_checkpoint", type=bool, required=False, help="Load a pre-trained model")
+    parser.add_argument("-config", type=str, help='Config file')
+    parser.add_argument("-image_dir", type=str, help='Directory with images')
+    parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
+    parser.add_argument("-continue_exp", type=bool, default=False, help="Continue previously started experiment?")
     parser.add_argument("-gpu_ratio", type=float, default=1., help="How many GPU ram is required? (ratio)")
+    parser.add_argument("-no_thread", type=int, default=1, help="No thread to load batch")
 
     args = parser.parse_args()
+    config, exp_identifier, save_path = load_config(args.config, args.exp_dir)
+    logger = logging.getLogger()
 
-    config, env, save_path, exp_identifier, logger = provider.load_data_from_args(args, load_picture=True)
-    
+    ###############################
+    #  LOAD DATA
+    #############################
+
+    # Load image
+    logger.info('Loading images..')
+    image_loader = get_img_loader(config, 'image', args.image_dir)
+    crop_loader = None  # get_img_loader(config, 'crop', args.image_dir)
+
+    # Load data
+    logger.info('Loading data..')
+    trainset = Dataset(args.data_dir, "train", image_loader, crop_loader)
+    validset = Dataset(args.data_dir, "valid", image_loader, crop_loader)
+    testset = Dataset(args.data_dir, "test", image_loader, crop_loader)
+
+    # Load dictionary
+    logger.info('Loading dictionary..')
+    tokenizer = GWTokenizer(os.path.join(args.data_dir, 'dict.json'))
+
+    # Build Network
+    logger.info('Building network..')
+    network = QGenNetworkLSTM(config["model"], num_words=tokenizer.no_words, use_baseline=False)
+
+    # Build Optimizer
+    logger.info('Building optimizer..')
+    optimizer, outputs = create_optimizer(network, network.ml_loss, config)
+
     ###############################
     #  START TRAINING
     #############################
 
-    logger.info('Building network..')
-    network = QGenNetworkLSTM(config)
+    # Load config
+    batch_size = config['optimizer']['batch_size']
+    no_epoch = config["optimizer"]["no_epoch"]
 
-
+    # create a saver to store/load checkpoint
     saver = tf.train.Saver()
 
+    # CPU/GPU option
+    cpu_pool = Pool(args.no_thread, maxtasksperchild=1000)
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_ratio)
+
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
 
-        if args.from_checkpoint:
-            saver.restore(sess, args.from_checkpoint)
-        else:
-            sess.run(tf.global_variables_initializer())
+        sources = network.get_sources(sess)
+        logger.info("Sources: " + ', '.join(sources))
+
+        sess.run(tf.global_variables_initializer())
+        start_epoch = load_checkpoint(sess, saver, args, save_path)
+
+        best_val_err = 1e5
+        best_train_err = None
+
+        # create training tools
+        evaluator = Evaluator(sources, network.scope_name, network=network, tokenizer=tokenizer)
+        batchifier = GuesserBatchifier(tokenizer, sources, status=('success',))
 
         best_val_loss = 1e5
         for t in range(0, config['optimizer']['no_epoch']):
 
             logger.info('Epoch {}..'.format(t + 1))
-            one_sample = {
-                "picture_fc8": env.trainset.games[0].picture.fc8.reshape((1, 1000)),
-            }
-            # warning! the beam search stops after detecting the Stop token :)
-            # we can either remove this constraint or use beam.word_id property (cf use_case of train_loop)
-            beam_sequence, tmp = network.eval_one_beam_search(sess, one_sample, env.tokenizer, max_depth=50)
-            logger.info(env.tokenizer.decode(tmp))
+            # one_sample = {
+            #     "picture_fc8": trainset.games[0].picture.fc8.reshape((1, 1000)),
+            # }
+            # # warning! the beam search stops after detecting the Stop token :)
+            # beam_sequence, tmp = network.eval_one_beam_search(sess, one_sample, env.tokenizer, max_depth=50)
+            # logger.info(tokenizer.decode(tmp))
 
-            iterator = provider.GameIterator(
-                env.trainset,
-                env.tokenizer,
-                batch_size=config['optimizer']['batch_size'],
-                shuffle=True,
-                status=('success',))
+            train_iterator = Iterator(trainset,
+                                      batch_size=batch_size, pool=cpu_pool,
+                                      batchifier=batchifier,
+                                      shuffle=True)
+            train_loss, train_error = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer])
 
-            train_loss = 0.0
+            valid_iterator = Iterator(validset, pool=cpu_pool,
+                                      batch_size=batch_size*2,
+                                      batchifier=batchifier,
+                                      shuffle=False)
+            valid_loss, valid_error = evaluator.process(sess, valid_iterator, outputs=outputs)
 
-            for N, batch in enumerate(tqdm(iterator)):
-                l, _ = sess.run([network.ml_loss, network.ml_optimize],
-                                feed_dict={
-                                    network.picture_fc8: batch['picture_fc8'],
-                                    network.dialogues: batch['padded_tokens'],
-                                    network.answer_mask: batch['answer_mask'],
-                                    network.padding_mask: batch['padding_mask'],
-                                    network.seq_length: batch['seq_length']
-                                })
-                train_loss += l
-            train_loss /= (N+1)
+            logger.info("Training loss: {}".format(train_loss))
+            logger.info("Training error: {}".format(train_error))
+            logger.info("Validation loss: {}".format(valid_loss))
+            logger.info("Validation error: {}".format(valid_error))
 
-            # Validation
-            iterator = provider.GameIterator(
-                env.validset,
-                env.tokenizer,
-                batch_size=config['optimizer']['batch_size'],
-                shuffle=True,
-                status=('success',))
-
-            valid_loss = 0.0
-
-            for N, batch in enumerate(tqdm(iterator)):
-                l, = sess.run([network.ml_loss],
-                              feed_dict={
-                                    network.picture_fc8: batch['picture_fc8'],
-                                    network.dialogues: batch['padded_tokens'],
-                                    network.answer_mask: batch['answer_mask'],
-                                    network.padding_mask: batch['padding_mask'],
-                                    network.seq_length: batch['seq_length']
-                                })
-                valid_loss += l
-            valid_loss /= (N+1)
-
-            logger.info("Training loss:  {}".format(train_loss))
-            logger.info("Validation loss:  {}".format(valid_loss))
-
-            if valid_loss < best_val_loss:
-                best_val_loss = valid_loss
+            if valid_error < best_val_err:
+                best_train_err = train_error
+                best_val_err = valid_error
                 saver.save(sess, save_path.format('params.ckpt'))
+                logger.info("Guesser checkpoint saved...")
 
-        # Experiment done; write results to experiment database (jsonl file)
-        with open(os.path.join(args.exp_dir, 'experiments.jsonl'), 'a') as f:
-            exp = dict()
-            exp['config'] = config
-            exp['best_val_loss'] = best_val_loss
-            exp['identifier'] = exp_identifier
+            pickle.dump({'epoch': t}, open(save_path.format('status.pkl'), 'wb'))
 
-            f.write(json.dumps(exp))
-            f.write('\n')
-
-        # Compute on Test
+        # Load early stopping
         saver.restore(sess, save_path.format('params.ckpt'))
+        test_iterator = Iterator(testset, pool=cpu_pool,
+                                 batch_size=batch_size*2,
+                                 batchifier=batchifier,
+                                 shuffle=True)
+        [test_loss, test_error] = evaluator.process(sess, test_iterator, outputs)
 
-        iterator = provider.GameIterator(
-            env.trainset,
-            env.tokenizer,
-            batch_size=config['optimizer']['batch_size'],
-            shuffle=True,
-            status=('success',))
-
-        test_loss = 0
-        for N, batch in enumerate(tqdm(iterator)):
-            l, = sess.run([network.ml_loss],
-                          feed_dict={
-                                    network.picture_fc8: batch['picture_fc8'],
-                                    network.dialogues: batch['padded_tokens'],
-                                    network.answer_mask: batch['answer_mask'],
-                                    network.padding_mask: batch['padding_mask'],
-                                    network.seq_length: batch['seq_length']
-                                })
-            test_loss += l
-        test_loss /= (N+1)
-
-        logger.info("Summary:")
-        logger.info("validation loss: {}".format(best_val_loss))
-        logger.info("Test loss: {}".format(test_loss))
+        logger.info("Testing loss: {}".format(test_loss))
+        logger.info("Testing error: {}".format(test_error))

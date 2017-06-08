@@ -1,0 +1,24 @@
+{
+  "model": {
+
+    "word_embedding_size": 512,
+    "num_lstm_units": 1024,
+    "picture_embedding_size": 512,
+
+    "image": {
+      "image_input": "features",
+      "dim": [224,224,3]
+    }
+
+  },
+
+  "optimizer": {
+    "no_epoch": 40,
+    "learning_rate": 1e-4,
+    "batch_size": 32,
+    "clip_val": 5
+  },
+
+  "seed": 1
+
+}

@@ -1,57 +1,51 @@
-import json
-import numpy as np
 import tensorflow as tf
 
-from generic.tensorflow.abstract_model import AbstractModel
+from generic.tf_utils.abstract_network import AbstractNetwork
 
 
-from generic.tensorflow import rnn, utils
+from generic.tf_models import rnn, utils
 
 
-class GuesserNetwork(AbstractModel):
+class GuesserNetwork(AbstractNetwork):
     def __init__(self, config, num_words, device='', reuse=False):
-        AbstractModel.__init__(self, "guesser", device=device)
+        AbstractNetwork.__init__(self, "guesser", device=device)
+
+        mini_batch_size = None
 
         with tf.variable_scope(self.scope_name):
-            mini_batch_size = None
-            # PICTURE
-            # self.picture_fc8 = tf.placeholder(
-            #     tf.float32,
-            #     [mini_batch_size, config['fc8_dim']],
-            #     name='picture_fc8')
 
-            # FLATTEN dialogue_lstm
+            # Dialogues
             self.dialogues = tf.placeholder(tf.int32, [mini_batch_size, None], name='dialogues')
             self.seq_length = tf.placeholder(tf.int32, [mini_batch_size], name='seq_length')
 
-            # OBJECTS
-            self.mask = tf.placeholder(tf.float32, [mini_batch_size, None], name='obj_mask')
+            # Objects
+            self.obj_mask = tf.placeholder(tf.float32, [mini_batch_size, None], name='obj_mask')
             self.obj_cats = tf.placeholder(tf.int32, [mini_batch_size, None], name='obj_cats')
             self.obj_spats = tf.placeholder(tf.float32, [mini_batch_size, None, config['spat_dim']], name='obj_spats')
 
+            # Targets
+            self.targets = tf.placeholder(tf.int32, [mini_batch_size], name="targets_index")
+
+
+
             self.object_cats_emb = utils.get_embedding(
                 self.obj_cats,
-                config['no_categories']+1,
+                config['no_categories'] + 1,
                 config['cat_emb_dim'],
                 scope='cat_embedding')
 
-            # TARGETS
-            self.targets = tf.placeholder(tf.int32, [mini_batch_size], name="targets_index")
-
-            self.objects = tf.concat([self.object_cats_emb, self.obj_spats], axis=2)
-
-            obj_inp_dim = config['cat_emb_dim'] + config['spat_dim']
-            self.flat_objects_inp = tf.reshape(self.objects, [-1, obj_inp_dim])
+            self.objects_input = tf.concat([self.object_cats_emb, self.obj_spats], axis=2)
+            self.flat_objects_inp = tf.reshape(self.objects_input, [-1, config['cat_emb_dim'] + config['spat_dim']])
 
             with tf.variable_scope('obj_mlp'):
                 h1 = utils.fully_connected(
                     self.flat_objects_inp,
-                    config['obj_mlp_units'],
+                    n_out=config['obj_mlp_units'],
                     activation='relu',
                     scope='l1')
                 h2 = utils.fully_connected(
                     h1,
-                    config['dialog_emb_dim'],
+                    n_out=config['dialog_emb_dim'],
                     activation='relu',
                     scope='l2')
 
@@ -63,7 +57,7 @@ class GuesserNetwork(AbstractModel):
                                               n_dim=config['word_emb_dim'],
                                               scope="input_word_embedding")
 
-            last_states, _ = rnn.variable_length_LSTM(input_words,
+            last_states = rnn.variable_length_LSTM(input_words,
                                                num_hidden=config['num_lstm_units'],
                                                seq_length=self.seq_length)
 
@@ -80,12 +74,11 @@ class GuesserNetwork(AbstractModel):
                 exp_sum_scores = tf.reduce_sum(exp_scores, axis=1, keep_dims=True)
                 return exp_scores / tf.tile(exp_sum_scores, [1, tf.shape(exp_scores)[1]])
 
-            self.softmax = masked_softmax(scores, self.mask)
+            self.softmax = masked_softmax(scores, self.obj_mask)
             self.selected_object = tf.argmax(self.softmax, axis=1)
 
             self.loss = tf.reduce_mean(utils.cross_entropy(self.softmax, self.targets))
             self.error = tf.reduce_mean(utils.error(self.softmax, self.targets))
-
 
     def get_outputs(self):
         return [self.loss, self.error]
