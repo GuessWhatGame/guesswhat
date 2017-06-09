@@ -11,10 +11,9 @@ import numpy as np
 
 
 class QGenWrapper(object):
-    def __init__(self, qgen, config, tokenizer, max_length=12):
+    def __init__(self, qgen, tokenizer, max_length):
 
         self.qgen = qgen
-        qgen.build_sampling_graph(config, tokenizer=tokenizer, max_length=max_length)
 
         self.tokenizer = tokenizer
         self.max_length=max_length
@@ -24,7 +23,7 @@ class QGenWrapper(object):
         # Track the hidden state of LSTM
         self.state_c = None
         self.state_h = None
-        self.state_size = config['num_lstm_units']
+        self.state_size = int(qgen.decoder_zero_state_c.get_shape()[1])
 
 
     def initialize(self, sess):
@@ -37,12 +36,13 @@ class QGenWrapper(object):
 
     def sample_next_question(self, sess, prev_answers, game_data, greedy):
         game_data["dialogues"] = prev_answers
+        game_data["seq_length"] = [1]*len(prev_answers)
         game_data["state_c"] = self.state_c
         game_data["state_h"] = self.state_h
         game_data["greedy"] = greedy
 
         # sample
-        res = self.evaluator.execute(sess, qgen.samples, game_data)
+        res = self.evaluator.execute(sess, self.qgen.samples, game_data)
 
         self.state_c = res[0],
         self.state_h = res[1],
@@ -51,7 +51,12 @@ class QGenWrapper(object):
 
         # Get questions
         padded_questions = transpose_questions.transpose([1, 0])
-        questions = [q[1:l + 1] for q, l in zip(padded_questions, seq_length)]
+        padded_questions = padded_questions[:,1:]  # ignore first token
+
+        for i, l in enumerate(seq_length):
+            padded_questions[i, l:] = self.tokenizer.padding_token
+
+        questions = [q[:l] for q, l in zip(padded_questions, seq_length)]
 
         return padded_questions, questions, seq_length
 

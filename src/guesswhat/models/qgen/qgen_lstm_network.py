@@ -114,6 +114,21 @@ class QGenNetworkLSTM(AbstractNetwork):
 
                 self.cross_entropy_loss = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=mlp_output, labels=target_words)
 
+            # compute the maximum likelihood loss
+            with tf.variable_scope('ml_loss'):
+
+                ml_loss = tf.identity(self.cross_entropy_loss)
+                ml_loss *= self.answer_mask[:, 1:]  # remove answers (ignore the <stop> token)
+                ml_loss *= self.padding_mask[:, 1:]  # remove padding (ignore the <start> token)
+
+                # Count number of unmask elements
+                count = tf.reduce_sum(self.padding_mask) - tf.reduce_sum(1 - self.answer_mask[:, :-1]) - 1  # no_unpad - no_qa - START token
+
+                ml_loss = tf.reduce_sum(ml_loss, axis=1)  # reduce over dialogue dimension
+                ml_loss = tf.reduce_sum(ml_loss, axis=0)  # reduce over minibatch dimension
+                self.ml_loss = ml_loss / count  # Normalize
+
+                self.loss = self.ml_loss
 
             # Compute policy gradient
             if policy_gradient:
@@ -148,38 +163,9 @@ class QGenNetworkLSTM(AbstractNetwork):
 
                     self.loss = self.policy_gradient_loss
 
-            else:
-                # compute the maximum likelihood loss
-                with tf.variable_scope('ml_loss'):
-
-                    ml_loss = tf.identity(self.cross_entropy_loss)
-                    ml_loss *= self.answer_mask[:, 1:]  # remove answers (ignore the <stop> token)
-                    ml_loss *= self.padding_mask[:, 1:]  # remove padding (ignore the <start> token)
-
-                    # Count number of unmask elements
-                    count = tf.reduce_sum(self.padding_mask) - tf.reduce_sum(1 - self.answer_mask[:, :-1]) - 1  # no_unpad - no_qa - START token
-
-                    ml_loss = tf.reduce_sum(ml_loss, axis=1)  # reduce over dialogue dimension
-                    ml_loss = tf.reduce_sum(ml_loss, axis=0)  # reduce over minibatch dimension
-                    self.ml_loss = ml_loss / count  # Normalize
-
-                    self.loss = self.ml_loss
-
-            # Final optimization !
-            # def optimize(loss, variables, config, optimizer):
-            #     clip_val = config['optimizer']['clip_val']
-            #     gvs = optimizer.compute_gradients(loss, var_list=variables)
-            #     clipped_gvs = [(tf.clip_by_norm(grad, clip_val), var) for grad, var in gvs]
-            #
-            #     return optimizer.apply_gradients(clipped_gvs)
 
 
-            # # We directly minimize the approximate score function and we let Tensorflow compute the gradient
-            # with tf.variable_scope('policy_gradient_optimizer'):
-            #     pg_variables = [v for v in tf.trainable_variables() if 'rl_baseline' not in v.name]
-            #     baseline_variables = [v for v in tf.trainable_variables() if 'rl_baseline' in v.name]
-            #     self.pg_optimize = optimize(self.policy_gradient_loss, pg_variables, config, tf.train.GradientDescentOptimizer(learning_rate=lrt))
-            #     self.baseline_optimize = optimize(self.baseline_loss, baseline_variables, config, tf.train.GradientDescentOptimizer(learning_rate=1e-3))
+
 
 
     def get_outputs(self):
@@ -230,7 +216,8 @@ class QGenNetworkLSTM(AbstractNetwork):
                     lstm_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(
                         config['num_lstm_units'],
                         layer_norm=False,
-                        dropout_keep_prob=1.0)
+                        dropout_keep_prob=1.0,
+                        reuse=True)
 
                     state = tf.contrib.rnn.LSTMStateTuple(c=state_c, h=state_h)
                     out, state = lstm_cell(inp_emb, state)
@@ -247,34 +234,34 @@ class QGenNetworkLSTM(AbstractNetwork):
                                              lambda: tf.argmax(output, 1),
                                              lambda: tf.reshape(tf.multinomial(output, 1), [-1])
                                              )
+                    sampled_tokens = tf.cast(sampled_tokens, tf.int32)
 
             tokens = tf.concat([tokens, tf.expand_dims(sampled_tokens, 0)], axis=0) # check axis!
 
             return state_c, state_h, tokens, seq_length, stop_indicator
 
-        with tf.variable_scope(self.scope_name):
 
-            # initialialize sequences
-            batch_size = tf.shape(self.seq_length)[0]
-            seq_length = tf.fill([batch_size], 0)
-            stop_indicator = tf.fill([batch_size], False)
+        # initialialize sequences
+        batch_size = tf.shape(self.seq_length)[0]
+        seq_length = tf.fill([batch_size], 0)
+        stop_indicator = tf.fill([batch_size], False)
 
-            transpose_dialogue = tf.transpose(self.dialogues, perm=[1,0])  # check transpose!
+        transpose_dialogue = tf.transpose(self.dialogues, perm=[1,0])  # check transpose!
 
-            self.samples = tf.while_loop(stop_cond, step, [self.decoder_zero_state_c,
-                                                           self.decoder_zero_state_h,
-                                                           transpose_dialogue,
-                                                           seq_length,
-                                                           stop_indicator],
-                                         shape_invariants=[self.decoder_zero_state_c.get_shape(),
-                                                           self.decoder_zero_state_h.get_shape(),
-                                                           tf.TensorShape([None, None]),
-                                                           seq_length.get_shape(),
-                                                           stop_indicator.get_shape()])
-
+        self.samples = tf.while_loop(stop_cond, step, [self.decoder_zero_state_c,
+                                                       self.decoder_zero_state_h,
+                                                       transpose_dialogue,
+                                                       seq_length,
+                                                       stop_indicator],
+                                     shape_invariants=[self.decoder_zero_state_c.get_shape(),
+                                                       self.decoder_zero_state_h.get_shape(),
+                                                       tf.TensorShape([None, None]),
+                                                       seq_length.get_shape(),
+                                                       stop_indicator.get_shape()])
 
 
 
 
+#
 
 

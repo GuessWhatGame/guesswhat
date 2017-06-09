@@ -18,6 +18,10 @@ class OracleWrapper(object):
         game_data["question"] = question
         game_data["seq_length"] = seq_length
 
+        # convert dico name to fit oracle constraint
+        game_data["category"] = game_data.get("targets_category", None)
+        game_data["spatial"] = game_data.get("targets_spatial", None)
+
         # sample
         answers_indices = self.evaluator.execute(sess, output=self.oracle.best_pred, batch=game_data)
 

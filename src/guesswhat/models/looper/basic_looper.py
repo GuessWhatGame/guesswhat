@@ -22,7 +22,7 @@ class BasicLooper(object):
 
         self.oracle = OracleWrapper(oracle, tokenizer)
         self.guesser = GuesserWrapper(guesser)
-        self.qgen = QGenWrapper(qgen, config["model"], tokenizer, max_length=self.max_depth)
+        self.qgen = QGenWrapper(qgen, tokenizer, max_length=self.max_depth)
 
     def process(self, sess, iterator, optimizer=list(), greedy=False, store_games=False):
 
@@ -47,7 +47,7 @@ class BasicLooper(object):
             for no_question in range(self.max_no_question):
 
                 # Step 1.1: Generate new question
-                questions, padded_questions, seq_length = \
+                padded_questions, questions, seq_length = \
                     self.qgen.sample_next_question(sess, prev_answers, game_data=game_data, greedy=greedy)  # TODO add mode to either use sampling, greedy, BSearch
 
                 # Step 1.2: Answer the question
@@ -61,7 +61,7 @@ class BasicLooper(object):
                     full_dialogues[i] = np.concatenate((full_dialogues[i], questions[i], [answers[i]]))
 
                 # Step 1.4 set new input tokens
-                prev_answers = answers
+                prev_answers = [[a]for a in answers]
 
             # Step 2 : clear question after <stop_dialogue>
             full_dialogues, _ = clear_after_stop_dialogue(full_dialogues, self.tokenizer)
@@ -94,7 +94,7 @@ class BasicLooper(object):
 
     def apply_policy_gradient(self, sess, final_reward, padded_dialogue, seq_length, game_data, optimizer):
 
-        # Compute cumulative reward
+        # Compute cumulative reward TODO: move into an external function
         cum_rewards = np.zeros_like(padded_dialogue, dtype=np.float32)
         for i, (end_of_dialogue, r) in enumerate(zip(seq_length, final_reward)):
             cum_rewards[i, :(end_of_dialogue - 1)] = r  # gamma = 1

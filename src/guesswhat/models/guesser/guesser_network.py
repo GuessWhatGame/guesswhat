@@ -57,7 +57,7 @@ class GuesserNetwork(AbstractNetwork):
                                               n_dim=config['word_emb_dim'],
                                               scope="input_word_embedding")
 
-            last_states = rnn.variable_length_LSTM(input_words,
+            last_states, _ = rnn.variable_length_LSTM(input_words,
                                                num_hidden=config['num_lstm_units'],
                                                seq_length=self.seq_length)
 

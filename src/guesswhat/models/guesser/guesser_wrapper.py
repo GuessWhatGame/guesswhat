@@ -20,7 +20,7 @@ class GuesserWrapper(object):
         # sample
         selected_object, softmax = self.evaluator.execute(sess, output=[self.guesser.selected_object, self.guesser.softmax], batch=game_data)
 
-        found = (selected_object == game_data["targets_indices"])
+        found = (selected_object == game_data["targets_index"])
 
         return found, softmax, selected_object
 

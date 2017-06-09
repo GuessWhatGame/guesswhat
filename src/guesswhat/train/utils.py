@@ -66,18 +66,19 @@ def get_img_loader(config, image_dir):
 
 from guesswhat.data_provider.questioner_batchifier import QuestionerBatchifier
 from guesswhat.data_provider.oracle_batchifier import OracleBatchifier
+from guesswhat.data_provider.guesswhat_dataset import OracleDataset
 
 from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 
 
-
 def test_oracle(sess, testset, tokenizer, oracle, cpu_pool, batch_size, logger):
 
+    oracle_dataset = OracleDataset(testset)
     oracle_sources = oracle.get_sources(sess)
     oracle_evaluator = Evaluator(oracle_sources, oracle.scope_name, network=oracle, tokenizer=tokenizer)
     oracle_batchifier = OracleBatchifier(tokenizer, oracle_sources, status=('success',))
-    oracle_iterator = Iterator(testset, pool=cpu_pool,
+    oracle_iterator = Iterator(oracle_dataset, pool=cpu_pool,
                              batch_size=batch_size,
                              batchifier=oracle_batchifier)
     [oracle_loss, oracle_error] = oracle_evaluator.process(sess, oracle_iterator, oracle.get_outputs())
@@ -105,7 +106,7 @@ def test_qgen(sess, testset, tokenizer, qgen, cpu_pool, batch_size, logger):
     qgen_iterator = Iterator(testset, pool=cpu_pool,
                                  batch_size=batch_size,
                                  batchifier=qgen_batchifier)
-    [qgen_loss] = qgen_evaluator.process(sess, qgen_iterator, qgen.get_outputs())
+    [qgen_loss] = qgen_evaluator.process(sess, qgen_iterator, outputs=[qgen.ml_loss])
     logger.info("QGen test loss: {}".format(qgen_loss))
 
 def test_model(sess, testset, tokenizer, oracle, guesser, qgen, cpu_pool, batch_size, logger):

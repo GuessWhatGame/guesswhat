@@ -10,7 +10,6 @@ from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
 
-
 from guesswhat.models.oracle.oracle_network import OracleNetwork
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
 from guesswhat.models.guesser.guesser_network import GuesserNetwork
@@ -26,7 +25,6 @@ from generic.utils.config import load_config, get_config_from_xp
 
 from guesswhat.train.utils import get_img_loader, load_checkpoint, test_model
 
-
 import guesswhat.data_provider as provider
 
 
@@ -41,43 +39,40 @@ import guesswhat.data_provider as provider
 
 
 def compute_stats(sess, batch_size, env, eval_looper, beam_looper, suffix, do_beam=False):
+    import numpy as np
 
-        import numpy as np
+    test_score_sampling = []
+    no_loop = 1
+    for _ in range(no_loop):
+        test_score_sampling += [eval_looper.eval(sess, greedy=False, store_games=True,
+                                                 iterator=provider.GameIterator(
+                                                     env.testset,
+                                                     env.tokenizer,
+                                                     batch_size=batch_size,
+                                                     shuffle=False,
+                                                     status=('success', 'failure'),
+                                                     pad_to_batch_size=True
+                                                 ))]
+    provider.dump_samples_into_dataset(eval_looper.looper.storage, save_path, env.tokenizer, name=suffix + ".sampling")
+    # save_plots(save_path.format(""), save_path.format(""), suffix+".sampling")
 
-        test_score_sampling = []
-        no_loop = 1
-        for _ in range(no_loop):
-            test_score_sampling += [eval_looper.eval(sess, greedy=False,store_games=True,
-                                    iterator=provider.GameIterator(
-                                        env.testset,
-                                        env.tokenizer,
-                                        batch_size=batch_size,
-                                        shuffle=False,
-                                        status=('success', 'failure'),
-                                        pad_to_batch_size=True
-                                        ))]
-        provider.dump_samples_into_dataset(eval_looper.looper.storage, save_path, env.tokenizer, name=suffix+".sampling")
-        #save_plots(save_path.format(""), save_path.format(""), suffix+".sampling")
+    test_score_greedy = eval_looper.eval(sess, greedy=True,
+                                         iterator=provider.GameIterator(
+                                             env.testset,
+                                             env.tokenizer,
+                                             batch_size=batch_size,
+                                             shuffle=False,
+                                             status=('success', 'failure'),
+                                             pad_to_batch_size=True
+                                         ))
 
-        test_score_greedy = eval_looper.eval(sess, greedy=True,
-                                             iterator=provider.GameIterator(
-                                                 env.testset,
-                                                 env.tokenizer,
-                                                 batch_size=batch_size,
-                                                 shuffle=False,
-                                                 status=('success', 'failure'),
-                                                 pad_to_batch_size=True
-                                             ))
+    logger.info("------------------------------------------------------")
+    logger.info("Testing (sampling) success ratio: {} +/- {}".format(np.mean(test_score_sampling), np.std(test_score_sampling)))
+    logger.info(test_score_sampling)
+    logger.info("Testing (greedy) Valid success ratio: {}".format(test_score_greedy))
 
-
-
-        logger.info("------------------------------------------------------")
-        logger.info("Testing (sampling) success ratio: {} +/- {}".format(np.mean(test_score_sampling), np.std(test_score_sampling)))
-        logger.info(test_score_sampling)
-        logger.info("Testing (greedy) Valid success ratio: {}".format(test_score_greedy))
-
-        if do_beam:
-            test_score_beamsearch = beam_looper.eval(sess, store_games=True,
+    if do_beam:
+        test_score_beamsearch = beam_looper.eval(sess, store_games=True,
                                                  iterator=provider.GameIterator(
                                                      env.testset,
                                                      env.tokenizer,
@@ -86,35 +81,30 @@ def compute_stats(sess, batch_size, env, eval_looper, beam_looper, suffix, do_be
                                                      status=('success', 'failure'),
                                                      pad_to_batch_size=True
                                                  ))
-            provider.dump_samples_into_dataset(beam_looper.storage, save_path, env.tokenizer, name=suffix+".beam")
-            # save_plots(save_path.format(""), save_path.format(""), suffix + ".beam")
-            logger.info("Testing (BS) success ratio: {}".format(test_score_beamsearch))
+        provider.dump_samples_into_dataset(beam_looper.storage, save_path, env.tokenizer, name=suffix + ".beam")
+        # save_plots(save_path.format(""), save_path.format(""), suffix + ".beam")
+        logger.info("Testing (BS) success ratio: {}".format(test_score_beamsearch))
 
+    explore_sampling = []
+    explore_greedy = []
+    for _ in range(no_loop):
+        explore_sampling += [eval_looper.eval(sess, provider.LoopIterator(env.trainset, batch_size=batch_size))]
+        explore_greedy += [eval_looper.eval(sess, greedy=True, iterator=provider.LoopIterator(env.trainset, batch_size=batch_size))]
 
-        explore_sampling = []
-        explore_greedy = []
-        for _ in range(no_loop):
-            explore_sampling += [eval_looper.eval(sess,provider.LoopIterator(env.trainset, batch_size=batch_size))]
-            explore_greedy += [eval_looper.eval(sess, greedy=True, iterator=provider.LoopIterator(env.trainset, batch_size=batch_size))]
+    logger.info("------------------------------------------------------")
+    logger.info("Explore (sampling) success ratio: {} +/- {}".format(np.mean(explore_sampling), np.std(explore_sampling)))
+    logger.info("Explore (greedy) Valid success ratio: {} +/- {}".format(np.mean(explore_greedy), np.std(explore_greedy)))
+    logger.info(test_score_sampling)
+    logger.info(explore_greedy)
 
-        logger.info("------------------------------------------------------")
-        logger.info("Explore (sampling) success ratio: {} +/- {}".format(np.mean(explore_sampling), np.std(explore_sampling)))
-        logger.info("Explore (greedy) Valid success ratio: {} +/- {}".format(np.mean(explore_greedy), np.std(explore_greedy)))
-        logger.info(test_score_sampling)
-        logger.info(explore_greedy)
-
-        # if do_beam:
-        #     explore_beam_search = []
-        #     for _ in range(1):#range(int(no_loop/2+1)):
-        #         explore_beam_search += [beam_looper.eval(sess, iterator=provider.LoopIterator(env.trainset, batch_size=1))]
-        #     logger.info("Explore (BS) success ratio: {} +/- {} ".format(np.mean(explore_beam_search), np.std(explore_beam_search)))
-        #
-        #     logger.info(explore_beam_search)
-        logger.info("------------------------------------------------------")
-
-
-
-
+    # if do_beam:
+    #     explore_beam_search = []
+    #     for _ in range(1):#range(int(no_loop/2+1)):
+    #         explore_beam_search += [beam_looper.eval(sess, iterator=provider.LoopIterator(env.trainset, batch_size=1))]
+    #     logger.info("Explore (BS) success ratio: {} +/- {} ".format(np.mean(explore_beam_search), np.std(explore_beam_search)))
+    #
+    #     logger.info(explore_beam_search)
+    logger.info("------------------------------------------------------")
 
 
 if __name__ == '__main__':
@@ -123,6 +113,7 @@ if __name__ == '__main__':
 
     parser.add_argument("-data_dir", type=str, help="Directory with data")
     parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
+    parser.add_argument("-image_dir", type=str, help='Directory with images')
     parser.add_argument("-config", type=str, help='Config file')
 
     parser.add_argument("-networks_dir", type=str, help="Directory with pretrained networks")
@@ -131,18 +122,19 @@ if __name__ == '__main__':
     parser.add_argument("-guesser_identifier", type=str, default='-8261780951461062027', help='Guesser identifier')
 
     # parser.add_argument("-from_checkpoint", type=bool, default=False, help="Start from checkpoint?")
-    parser.add_argument("-from_checkpoint", type=str, default="2009502410849455808", help="Start from checkpoint?")
+    parser.add_argument("-from_checkpoint", type=str, help="Start from checkpoint?")
 
     parser.add_argument("-gpu_ratio", type=float, default=0.95, help="How muany GPU ram is required? (ratio)")
+    parser.add_argument("-no_thread", type=int, default=1, help="No thread to load batch")
 
     args = parser.parse_args()
 
     loop_config, exp_identifier, save_path = load_config(args.config, args.exp_dir)
 
     # Load all  networks configs
-    qgen_config = get_config_from_xp(args.qgen_identifier, os.path.join(args.networks_dir, "qgen"))
-    oracle_config = get_config_from_xp(args.oracle_identifier, os.path.join(args.networks_dir))
-    guesser_config = get_config_from_xp(args.guesser_identifier, os.path.join(args.networks_dir, "guesser"))
+    oracle_config = get_config_from_xp(os.path.join(args.networks_dir, "oracle"), args.oracle_identifier)
+    guesser_config = get_config_from_xp(os.path.join(args.networks_dir, "guesser"), args.guesser_identifier)
+    qgen_config = get_config_from_xp(os.path.join(args.networks_dir, "qgen"), args.qgen_identifier)
 
     logger = logging.getLogger()
 
@@ -152,7 +144,7 @@ if __name__ == '__main__':
 
     # Load image
     logger.info('Loading images..')
-    image_loader = get_img_loader(guesser_config['model']['image'], args.image_dir)
+    image_loader = get_img_loader(qgen_config['model']['image'], args.image_dir)
     crop_loader = None  # get_img_loader(guesser_config['model']['crop'], args.image_dir)
 
     # Load data
@@ -172,15 +164,15 @@ if __name__ == '__main__':
     logger.info('Building networks..')
 
     qgen_network = QGenNetworkLSTM(qgen_config["model"], num_words=tokenizer.no_words, policy_gradient=True)
-    qgen_var = [v for v in tf.global_variables() if v.name.startswith("qgen") and 'rl_baseline' not in v.name]
+    qgen_var = [v for v in tf.global_variables() if "qgen" in v.name and 'rl_baseline' not in v.name]
     qgen_saver = tf.train.Saver(var_list=qgen_var)
 
     oracle_network = OracleNetwork(oracle_config, num_words=tokenizer.no_words)
-    oracle_var = [v for v in tf.global_variables() if v.name.startswith("oracle")]
+    oracle_var = [v for v in tf.global_variables() if "oracle" in v.name]
     oracle_saver = tf.train.Saver(var_list=oracle_var)
 
-    guesser_network = GuesserNetwork(guesser_config, num_words=tokenizer.no_words)
-    guesser_var = [v for v in tf.global_variables() if v.name.startswith("guesser")]
+    guesser_network = GuesserNetwork(guesser_config["model"], num_words=tokenizer.no_words)
+    guesser_var = [v for v in tf.global_variables() if "guesser" in v.name]
     guesser_saver = tf.train.Saver(var_list=guesser_var)
 
     loop_saver = tf.train.Saver(allow_empty=False)
@@ -190,9 +182,19 @@ if __name__ == '__main__':
     #############################
 
     logger.info('Building optimizer..')
-    optimizer_policy_grad, _ = create_optimizer(qgen_network, qgen_network.policy_gradient_loss, loop_config)
-    optimizer_baseline, _ = create_optimizer(qgen_network, qgen_network.baseline_loss, loop_config)
-    optimizer = [optimizer_policy_grad, optimizer_baseline]
+
+    pg_variables = [v for v in tf.trainable_variables() if "qgen" in v.name and 'rl_baseline' not in v.name]
+    baseline_variables = [v for v in tf.trainable_variables() if "qgen" in v.name and 'rl_baseline' in v.name]
+
+    pg_optimize = create_optimizer(qgen_network, qgen_network.policy_gradient_loss, loop_config,
+                                   var_list=pg_variables,
+                                   optim=tf.train.GradientDescentOptimizer)
+    baseline_optimize = create_optimizer(qgen_network, qgen_network.baseline_loss, loop_config,
+                                         var_list=baseline_variables,
+                                         optim=tf.train.GradientDescentOptimizer,
+                                         apply_update_ops=False)
+
+    optimizer = [pg_optimize, baseline_optimize]
 
     ###############################
     #  START TRAINING
@@ -226,14 +228,12 @@ if __name__ == '__main__':
             guesser_saver.restore(sess, os.path.join(args.networks_dir, 'guesser', args.guesser_identifier, 'params.ckpt'))
 
         # check that models are correctly loaded
-        test_model(sess, testset, tokenizer=tokenizer,
+        test_model(sess, testset, cpu_pool=cpu_pool, tokenizer=tokenizer,
                    oracle=oracle_network,
                    guesser=guesser_network,
                    qgen=qgen_network,
                    batch_size=100,
                    logger=logger)
-
-
 
         # create training tools
         loop_sources = qgen_network.get_sources(sess)
@@ -245,12 +245,12 @@ if __name__ == '__main__':
         eval_batchifier = QuestionerBatchifier(tokenizer, loop_sources)
 
         # Initialize the looper to eval/train the game-simulation
+        qgen_network.build_sampling_graph(qgen_config["model"], tokenizer=tokenizer, max_length=loop_config['loop']['max_depth'])
         looper_evaluator = BasicLooper(loop_config,
                                        oracle=oracle_network,
                                        guesser=guesser_network,
                                        qgen=qgen_network,
                                        tokenizer=tokenizer)
-
 
         # Evaluate starting point
         # logger.info(">>>-------------- INITIALISATION ---------------------<<<")
@@ -266,14 +266,16 @@ if __name__ == '__main__':
 
             train_iterator = Iterator(trainset, batch_size=batch_size,
                                       pool=cpu_pool,
-                                      batchifier=train_batchifier)
+                                      batchifier=train_batchifier,
+                                      use_padding=True)
             train_score = looper_evaluator.process(sess, train_iterator,
-                                                    optimizer=optimizer)
+                                                   optimizer=optimizer)
 
             valid_iterator = Iterator(validset, pool=cpu_pool,
                                       batch_size=batch_size * 2,
                                       batchifier=eval_batchifier,
-                                      shuffle=False)
+                                      shuffle=False,
+                                      use_padding=True)
             val_score = looper_evaluator.process(sess, valid_iterator)
 
             logger.info("Train (Explore) success ratio : {}".format(train_score))
@@ -287,12 +289,12 @@ if __name__ == '__main__':
         # Compute the test score with early stopping
         loop_saver.restore(sess, save_path.format('params.ckpt'))
         test_iterator = Iterator(testset, pool=cpu_pool,
-                                  batch_size=batch_size * 2,
-                                  batchifier=eval_batchifier,
-                                  shuffle=False)
+                                 batch_size=batch_size * 2,
+                                 batchifier=eval_batchifier,
+                                 shuffle=False,
+                                 use_padding=True)
         test_score = looper_evaluator.process(sess, test_iterator)
 
         # logger.info(">>>-------------- FINAL SCORE ---------------------<<<")
         # compute_stats(sess, batch_size, env, eval_looper, beam_looper, suffix="model", do_beam=False)
         # logger.info(">>>------------------------------------------------<<<")
-

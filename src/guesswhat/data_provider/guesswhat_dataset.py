@@ -48,7 +48,7 @@ class Game:
 
 
 class Picture:
-    def __init__(self, id, width, height, url, image_loader):
+    def __init__(self, id, width, height, url, image_loader=None):
         self.id = id
         self.width = width
         self.height = height
@@ -56,6 +56,7 @@ class Picture:
         self.path = None
         self.fc8 = None
 
+        self.image_loader = image_loader
         if image_loader is not None:
             self.image_loader = image_loader.preload(id)
 
@@ -126,7 +127,7 @@ class Dataset(AbstractDataset):
 
                 games.append(g)
 
-                # if len(games) > 200: break
+                if len(games) > 200: break
 
         super(Dataset, self).__init__(games)
 
@@ -140,7 +141,6 @@ class OracleDataset(AbstractDataset):
         new_games = []
         for g in old_games:
             new_games += self.split(g)
-        self.image_folder = dataset.image_folder
         super(OracleDataset, self).__init__(new_games)
 
     @classmethod
