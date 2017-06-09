@@ -49,7 +49,7 @@ class OracleNetwork(AbstractNetwork):
 
             # IMAGE
             if config['inputs']['image']:
-                self._image = tf.placeholder(tf.float32, [self.batch_size] + config['crop']["dim"], name='image')
+                self._image = tf.placeholder(tf.float32, [self.batch_size] + config['crop']["dim"], name='images')
 
                 if len(config["image"]["dim"]) == 1:
                     self.image_out = self._image

@@ -66,23 +66,14 @@ class OracleBatchifier(AbstractBatchifier):
                 batch['spatial'].append(spat_feat)
 
             if 'crop' in sources:
-                batch['crop_fc8'].append(game.object.get_crop())
+                batch['crop'].append(game.object.get_crop())
+                # crop = scaled_crop_and_pad(raw_img=raw_img, bbox=game.object.bbox, scale=kwargs["scale"])
+                # crop = preprocess_img(crop, kwargs["crop_width"], kwargs["crop_height"], kwargs)
+                # batch['crop'].append(crop)
 
             if 'image' in sources:
-                batch['image'].append(picture.get_image())
+                batch['images'].append(picture.get_image())
 
-            # Load picture if required
-            if any([x in sources for x in ('picture_raw', 'crop')]):
-                raw_img = Image.open(game.picture.path).convert('RGB')
-
-                if 'picture_raw' in sources:
-                    img = preprocess_img(raw_img, kwargs["image_w"], kwargs["image_h"], kwargs)
-                    batch['picture_raw'].append(img)
-
-                if 'crop' in sources:
-                    crop = scaled_crop_and_pad(raw_img=raw_img, bbox=game.object.bbox, scale=kwargs["scale"])
-                    crop = preprocess_img(crop, kwargs["crop_width"], kwargs["crop_height"], kwargs)
-                    batch['crop'].append(crop)
 
         # pad the questions
         if 'question' in sources:

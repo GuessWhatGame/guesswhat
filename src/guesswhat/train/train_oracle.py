@@ -32,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
     parser.add_argument("-config", type=str, help='Config file')
     parser.add_argument("-image_dir", type=str, help='Directory with images')
+    parser.add_argument("-crop_dir", type=str, help='Directory with images')
     parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
     parser.add_argument("-continue_exp", type=bool, default=False, help="Continue previously started experiment?")
     parser.add_argument("-gpu_ratio", type=float, default=1., help="How many GPU ram is required? (ratio)")
@@ -52,7 +53,7 @@ if __name__ == '__main__':
     if config['inputs'].get('image', False):
         image_loader = get_img_loader(config['image'], args.image_dir) #TODO improve interface
     if config['inputs'].get('crop', False):
-        crop_loader = get_img_loader(config['crop'], args.image_dir)
+        crop_loader = get_img_loader(config['crop'], args.crop_dir)
 
     # Load data
     logger.info('Loading data..')
@@ -100,7 +101,7 @@ if __name__ == '__main__':
 
         # create training tools
         evaluator = Evaluator(sources, network.scope_name)
-        batchifier = OracleBatchifier(tokenizer, sources, **config['model']['crop'])
+        batchifier = OracleBatchifier(tokenizer, sources, status=config['status'], **config['model']['crop'])
 
         for t in range(start_epoch, no_epoch):
             logger.info('Epoch {}..'.format(t + 1))
