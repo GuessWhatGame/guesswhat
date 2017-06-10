@@ -99,8 +99,8 @@ class Object:
         if crop_loader is not None:
             self.crop_loader = crop_loader.preload(id)
 
-    def get_crop(self):
-        return self.crop_loader.get_image(self.id)
+    def get_crop(self, **kwarg):
+        return self.crop_loader.get_image(self.id, kwarg)
 
 
 
@@ -127,7 +127,7 @@ class Dataset(AbstractDataset):
 
                 games.append(g)
 
-                if len(games) > 200: break
+                # if len(games) > 200: break
 
         super(Dataset, self).__init__(games)
 

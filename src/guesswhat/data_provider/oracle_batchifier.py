@@ -66,10 +66,10 @@ class OracleBatchifier(AbstractBatchifier):
                 batch['spatial'].append(spat_feat)
 
             if 'crop' in sources:
-                batch['crop'].append(game.object.get_crop())
-                # crop = scaled_crop_and_pad(raw_img=raw_img, bbox=game.object.bbox, scale=kwargs["scale"])
-                # crop = preprocess_img(crop, kwargs["crop_width"], kwargs["crop_height"], kwargs)
-                # batch['crop'].append(crop)
+                batch['crop'].append(game.object.get_crop(bbox=game.object.bbox,
+                                                          crop_width=kwargs["crop_width"],
+                                                          crop_height= kwargs["crop_height"],
+                                                          scale=kwargs["scale"]))
 
             if 'image' in sources:
                 batch['images'].append(picture.get_image())

@@ -1,6 +1,4 @@
 import argparse
-import collections
-import json
 import logging
 import os
 import pickle
@@ -51,9 +49,9 @@ if __name__ == '__main__':
     logger.info('Loading images..')
     image_loader, crop_loader = None, None
     if config['inputs'].get('image', False):
-        image_loader = get_img_loader(config['image'], args.image_dir) #TODO improve interface
+        image_loader = get_img_loader(config['image'], args.image_dir)
     if config['inputs'].get('crop', False):
-        crop_loader = get_img_loader(config['crop'], args.crop_dir)
+        crop_loader = get_img_loader(config['crop'], args.crop_dir, is_crop=True)
 
     # Load data
     logger.info('Loading data..')

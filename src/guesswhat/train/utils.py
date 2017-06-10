@@ -42,7 +42,7 @@ def load_checkpoint(sess, saver, args, save_path):
     return 0
 
 
-def get_img_loader(config, image_dir):
+def get_img_loader(config, image_dir, is_crop=False):
 
     image_input = config["image_input"]
 
@@ -53,11 +53,18 @@ def get_img_loader(config, image_dir):
         else:
             loader = ConvLoader(image_dir)
     elif image_input == "raw":
-        loader = RawImageLoader(image_dir,
-                                height=config["dim"][0],
-                                width=config["dim"][1],
-                                channel=config.get("channel", None),
-                                extension=config.get("extension", "jpg"))
+        if is_crop:
+            loader = RawCropLoader(image_dir,
+                                    height=config["dim"][0],
+                                    width=config["dim"][1],
+                                    channel=config.get("channel", None),
+                                    extension=config.get("extension", "jpg"))
+        else:
+            loader = RawImageLoader(image_dir,
+                                    height=config["dim"][0],
+                                    width=config["dim"][1],
+                                    channel=config.get("channel", None),
+                                    extension=config.get("extension", "jpg"))
     else:
         assert False, "incorrect image input: {}".format(image_input)
 
