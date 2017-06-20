@@ -157,12 +157,44 @@ python src/guesswhat/preprocess_data/create_dico.py \
 ```
 
 ### Train Oracle
+To train the oracle, you need to select/configure the input you want to use.
+To do so, you have update the file config/oracle/config.json
+By default, the oracle is trained with  spatial+category but one may add/remove inputs.
+More information are available in the config folder.
 
+Once the config file is set, you can launch the training step:
+```
+python src/guesswhat/train/train_oracle.py \
+   -data_dir data \
+   -image_dir data/vgg_img \
+   -crop_dir data/vgg_crop \
+   -config config/oracle/config.json \
+   -exp_dir out/oracle \
+   -no_thread 2 
+```
 
 ### Train Guesser
+Identically, you first have to update the config/guesser/config.json
 
+```
+python src/guesswhat/train/train_guesser.py \
+   -data_dir data \
+   -image_dir data/vgg_img \
+   -config config/guesser/config.json \
+   -exp_dir out/guesser \
+   -no_thread 2 
+```
 
 ### Train QGen
+Identically, you first have to update the config/guesser/config.json
+```
+python src/guesswhat/train/train_qgen.py \
+   -data_dir data \
+   -image_dir data/vgg_img \
+   -config config/qgen/config.json \
+   -exp_dir out/qgen \
+   -no_thread 2 
+```
 
 ### Train Looper
 
