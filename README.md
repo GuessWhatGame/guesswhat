@@ -56,13 +56,13 @@ guesswhat
 |   ├── oracle
 |   ├── guesser
 |   ├── qgen
-|   └── loop
+|   └── looper
 |
 ├── out            # store the output experiments (checkpoint, logs etc.)
 |   ├── oracle
 |   ├── guesser
 |   ├── qgen
-|   └── loop
+|   └── looper
 |
 ├── data          # contains the Guesshat data
 |   └── img       # contains the coco img
@@ -76,7 +76,14 @@ guesswhat
 └── src            # source files
 ```
 
-Of course, one is free to change this file architecture to its need!
+To complete the git-clone file arhictecture, you can do:
+
+```
+mkdir data; mkdir data/img
+mkdir out; mkdir out/oracle ; mkdir out/guesser; mkdir out/qgen; mkdir out/looper ; 
+```
+
+Of course, one is free to change this file architecture!
 
 ### Data
 GuessWhat?! relies on two datasets:
@@ -85,14 +92,14 @@ GuessWhat?! relies on two datasets:
 
 To download the GuessWhat?! dataset please follow the following instruction:
 ```
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz guesswhat/data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz guesswhat/data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz guesswhat/data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz data/
 ```
 
 To download the MS Coco dataset, please follow the following instruction:
 ```
-wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip guesswhat/data/
+wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip data/
 unzip train2014.zip guesswhat/data/img
 
 wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip
@@ -117,7 +124,7 @@ Following the original papers, we are going to extract fc8 features from the coc
 First, one need to download the vgg pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/slim):
 
 ```
-wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz guesswhat/data/
+wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz data/
 tar zxvf vgg_16_2016_08_28.tar.gz 
 rm vgg_16_2016_08_28.tar.gz
 ```
@@ -127,7 +134,7 @@ To do so, you need to use the pythn script guesswhat/src/guesswhat/preprocess_da
 ```
 array=( img crop )
 for mode in "${array[@]}"; do
-   python guesswhat/src/guesswhat/preprocess_data/extract_img_features.py \
+   python src/guesswhat/preprocess_data/extract_img_features.py \
      -image_dir data/img
      -data_dir data
      -data_out data
@@ -144,7 +151,7 @@ Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please fo
 To create the GuessWhat?! dictionary, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/create_dico.py .
 
 ```
-python guesswhat/src/guesswhat/preprocess_data/create_dico.py \
+python src/guesswhat/preprocess_data/create_dico.py \
   -dataset_path data
   -dico_path data/dico.json
 ```
