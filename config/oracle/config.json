@@ -8,7 +8,6 @@
   },
 
   "model": {
-    "no_words": 4901,
     "question": {
       "no_LSTM_hiddens": 512,
       "embedding_dim": 300
@@ -25,14 +24,12 @@
 
     "image": {
       "image_input": "features",
-      "dim": [224,224,3]
+      "dim": [1000]
     },
 
     "crop": {
-      "crop_width": 224,
-      "crop_height": 224,
-      "channel": 3,
-      "scale": 1.1
+      "image_input": "features",
+      "dim": [1000]
     }
 
   },

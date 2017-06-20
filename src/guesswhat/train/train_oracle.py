@@ -27,7 +27,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Oracle network baseline!')
 
     parser.add_argument("-data_dir", type=str, help="Directory with data")
-    parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
     parser.add_argument("-config", type=str, help='Config file')
     parser.add_argument("-image_dir", type=str, help='Directory with images')
     parser.add_argument("-crop_dir", type=str, help='Directory with images')

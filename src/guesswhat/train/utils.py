@@ -1,19 +1,7 @@
 from __future__ import unicode_literals
 import collections
-import hashlib
-import json
-import logging
-import numpy as np
-import os
-import shutil
-import tensorflow as tf
-import sys
 import pickle
 
-import gzip
-
-from logging.handlers import RotatingFileHandler
-from guesswhat.data_provider.guesswhat_dataset import Dataset
 
 from generic.data_provider.image_loader import *
 
