@@ -33,13 +33,13 @@ class QGenNetworkLSTM(AbstractNetwork):
             zero_state = tf.zeros([1, config['num_lstm_units']])  # default LSTM state is a zero-vector
             zero_state = tf.tile(zero_state, [tf.shape(self.images)[0], 1])  # trick to do a dynamic size 0 tensors
 
-            self.decoder_zero_state_c = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="stace_c")
-            self.decoder_zero_state_h = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="stace_h")
+            self.decoder_zero_state_c = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="state_c")
+            self.decoder_zero_state_h = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="state_h")
             decoder_initial_state = tf.contrib.rnn.LSTMStateTuple(c=self.decoder_zero_state_c, h=self.decoder_zero_state_h)
 
             # Misc
             self.is_training = tf.placeholder(tf.bool, name='is_training')
-            self.greedy = tf.placeholder_with_default(False, shape=(), name="is_greedy") # use for graph
+            self.greedy = tf.placeholder_with_default(False, shape=(), name="greedy") # use for graph
             self.samples = None
 
             # remove last token
@@ -137,7 +137,7 @@ class QGenNetworkLSTM(AbstractNetwork):
                     decoder_out = tf.stop_gradient(self.decoder_output)  # take the LSTM output (and stop the gradient!)
 
                     flat_decoder_output = tf.reshape(decoder_out, [-1, decoder_lstm_cell.output_size])  #
-                    flat_h1 = utils.fully_connected(flat_decoder_output, n_out=config["baseline_no_hidden"], activation='relu', scope='baseline_hidden')
+                    flat_h1 = utils.fully_connected(flat_decoder_output, n_out=100, activation='relu', scope='baseline_hidden')
                     flat_baseline = utils.fully_connected(flat_h1, 1, activation='relu', scope='baseline_out')
 
                     self.baseline = tf.reshape(flat_baseline, [tf.shape(self.seq_length)[0], max_sequence-1])
@@ -190,7 +190,7 @@ class QGenNetworkLSTM(AbstractNetwork):
             stop_token = tf.constant(tokenizer.stop_token)
             stop_dialogue_token = tf.constant(tokenizer.stop_dialogue)
 
-        def step(state_c, state_h, tokens, seq_length, stop_indicator):
+        def step(prev_state_c, prev_state_h, tokens, seq_length, stop_indicator):
             input = tf.gather(tokens, tf.shape(tokens)[0] - 1)
 
             # Look for new finish dialogue
@@ -219,13 +219,14 @@ class QGenNetworkLSTM(AbstractNetwork):
                         dropout_keep_prob=1.0,
                         reuse=True)
 
-                    state = tf.contrib.rnn.LSTMStateTuple(c=state_c, h=state_h)
+                    state = tf.contrib.rnn.LSTMStateTuple(c=prev_state_c, h=prev_state_h)
                     out, state = lstm_cell(inp_emb, state)
 
-                    # store/update the state when the dialogue is not finished
+                    # store/update the state when the dialogue is not finished (after sampling the <?> token)
                     cond = tf.greater_equal(seq_length, tf.subtract(tf.reduce_max(seq_length), 1))
-                    state_c = tf.where(cond, state.c, state_c)
-                    state_h = tf.where(cond, state.h, state_h)
+                    state_c = tf.where(cond, state.c, prev_state_c)
+                    state_h = tf.where(cond, state.h, prev_state_h)
+
 
                 with tf.variable_scope('decoder_output'):
                     output = utils.fully_connected(state_h, tokenizer.no_words, reuse=True)
@@ -246,7 +247,7 @@ class QGenNetworkLSTM(AbstractNetwork):
         seq_length = tf.fill([batch_size], 0)
         stop_indicator = tf.fill([batch_size], False)
 
-        transpose_dialogue = tf.transpose(self.dialogues, perm=[1,0])  # check transpose!
+        transpose_dialogue = tf.transpose(self.dialogues, perm=[1,0])
 
         self.samples = tf.while_loop(stop_cond, step, [self.decoder_zero_state_c,
                                                        self.decoder_zero_state_h,
@@ -258,10 +259,4 @@ class QGenNetworkLSTM(AbstractNetwork):
                                                        tf.TensorShape([None, None]),
                                                        seq_length.get_shape(),
                                                        stop_indicator.get_shape()])
-
-
-
-
-#
-
 

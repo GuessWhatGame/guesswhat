@@ -15,7 +15,6 @@ class BasicLooper(object):
         self.tokenizer = tokenizer
 
         self.batch_size = config["optimizer"]["batch_size"]
-        self.use_baseline = config['optimizer']['use_baseline']
 
         self.max_no_question = config['loop']['max_question']
         self.max_depth = config['loop']['max_depth']
@@ -85,7 +84,7 @@ class BasicLooper(object):
                                            game_data=game_data,
                                            optimizer=optimizer)
 
-        score = 1.0 * score / total_elem
+        score = 1.0 * score / iterator.n_examples
 
         return score
 

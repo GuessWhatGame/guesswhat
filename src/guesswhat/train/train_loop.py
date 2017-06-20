@@ -117,9 +117,9 @@ if __name__ == '__main__':
     parser.add_argument("-config", type=str, help='Config file')
 
     parser.add_argument("-networks_dir", type=str, help="Directory with pretrained networks")
-    parser.add_argument("-oracle_identifier", type=str, default='-4252052547696363119', help='Oracle identifier')  # Use checkpoint id instead?
-    parser.add_argument("-qgen_identifier", type=str, default='6916731124307064098', help='Qgen identifier')
-    parser.add_argument("-guesser_identifier", type=str, default='-8261780951461062027', help='Guesser identifier')
+    parser.add_argument("-oracle_identifier", type=str, default='5297505520ab25d51eabb5e652843380', help='Oracle identifier')  # Use checkpoint id instead?
+    parser.add_argument("-qgen_identifier", type=str, default='a2aac2dc381bd51f82332106efb14ecc', help='Qgen identifier')
+    parser.add_argument("-guesser_identifier", type=str, default='4061b58d200976b96006f6dcea468aef', help='Guesser identifier')
 
     # parser.add_argument("-from_checkpoint", type=bool, default=False, help="Start from checkpoint?")
     parser.add_argument("-from_checkpoint", type=str, help="Start from checkpoint?")
@@ -186,10 +186,10 @@ if __name__ == '__main__':
     pg_variables = [v for v in tf.trainable_variables() if "qgen" in v.name and 'rl_baseline' not in v.name]
     baseline_variables = [v for v in tf.trainable_variables() if "qgen" in v.name and 'rl_baseline' in v.name]
 
-    pg_optimize = create_optimizer(qgen_network, qgen_network.policy_gradient_loss, loop_config,
+    pg_optimize, _ = create_optimizer(qgen_network, qgen_network.policy_gradient_loss, loop_config,
                                    var_list=pg_variables,
                                    optim=tf.train.GradientDescentOptimizer)
-    baseline_optimize = create_optimizer(qgen_network, qgen_network.baseline_loss, loop_config,
+    baseline_optimize, _= create_optimizer(qgen_network, qgen_network.baseline_loss, loop_config,
                                          var_list=baseline_variables,
                                          optim=tf.train.GradientDescentOptimizer,
                                          apply_update_ops=False)
@@ -241,8 +241,8 @@ if __name__ == '__main__':
 
         evaluator = Evaluator(loop_sources, qgen_network.scope_name, network=qgen_network, tokenizer=tokenizer)
 
-        train_batchifier = LooperBatchifier(tokenizer, loop_sources)
-        eval_batchifier = QuestionerBatchifier(tokenizer, loop_sources)
+        train_batchifier = LooperBatchifier(tokenizer, loop_sources, train=True)
+        eval_batchifier = LooperBatchifier(tokenizer, loop_sources, train=False)
 
         # Initialize the looper to eval/train the game-simulation
         qgen_network.build_sampling_graph(qgen_config["model"], tokenizer=tokenizer, max_length=loop_config['loop']['max_depth'])
@@ -256,6 +256,14 @@ if __name__ == '__main__':
         # logger.info(">>>-------------- INITIALISATION ---------------------<<<")
         # compute_stats(sess, batch_size, env, eval_looper, beam_looper, suffix="start", do_beam=True)
         # logger.info(">>>---------------------------------------------------<<<")
+
+        test_iterator = Iterator(testset, pool=cpu_pool,
+                                 batch_size=batch_size,
+                                 batchifier=eval_batchifier,
+                                 shuffle=False,
+                                 use_padding=True)
+        test_score = looper_evaluator.process(sess, test_iterator)
+        logger.info("Test (Init) success ratio : {}".format(test_score))
 
         logs = []
         # Start training
@@ -272,7 +280,7 @@ if __name__ == '__main__':
                                                    optimizer=optimizer)
 
             valid_iterator = Iterator(validset, pool=cpu_pool,
-                                      batch_size=batch_size * 2,
+                                      batch_size=batch_size,
                                       batchifier=eval_batchifier,
                                       shuffle=False,
                                       use_padding=True)
@@ -289,12 +297,12 @@ if __name__ == '__main__':
         # Compute the test score with early stopping
         loop_saver.restore(sess, save_path.format('params.ckpt'))
         test_iterator = Iterator(testset, pool=cpu_pool,
-                                 batch_size=batch_size * 2,
+                                 batch_size=batch_size,
                                  batchifier=eval_batchifier,
                                  shuffle=False,
                                  use_padding=True)
         test_score = looper_evaluator.process(sess, test_iterator)
-
+        logger.info("Test success ratio : {}".format(test_score))
         # logger.info(">>>-------------- FINAL SCORE ---------------------<<<")
         # compute_stats(sess, batch_size, env, eval_looper, beam_looper, suffix="model", do_beam=False)
         # logger.info(">>>------------------------------------------------<<<")

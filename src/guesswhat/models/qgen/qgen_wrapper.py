@@ -25,6 +25,8 @@ class QGenWrapper(object):
         self.state_h = None
         self.state_size = int(qgen.decoder_zero_state_c.get_shape()[1])
 
+        self.beam = None
+
 
     def initialize(self, sess):
         self.evaluator = Evaluator(self.qgen.get_sources(sess), self.qgen.scope_name)
@@ -34,7 +36,10 @@ class QGenWrapper(object):
         self.state_c = np.zeros((batch_size, self.state_size))
         self.state_h = np.zeros((batch_size, self.state_size))
 
+        self.beam = None
+
     def sample_next_question(self, sess, prev_answers, game_data, greedy):
+
         game_data["dialogues"] = prev_answers
         game_data["seq_length"] = [1]*len(prev_answers)
         game_data["state_c"] = self.state_c
@@ -44,8 +49,8 @@ class QGenWrapper(object):
         # sample
         res = self.evaluator.execute(sess, self.qgen.samples, game_data)
 
-        self.state_c = res[0],
-        self.state_h = res[1],
+        self.state_c = res[0]
+        self.state_h = res[1]
         transpose_questions = res[2]
         seq_length = res[3]
 
@@ -59,9 +64,6 @@ class QGenWrapper(object):
         questions = [q[:l] for q, l in zip(padded_questions, seq_length)]
 
         return padded_questions, questions, seq_length
-
-
-
 
     def bsearch_next_question(self, prev_answers):
         pass
