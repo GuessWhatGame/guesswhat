@@ -112,7 +112,7 @@ md5sum $file
 Before starting the training, one needs to compute the image features and the word dictionnary
 
 #### Extract image features
-Following the original papers, we are going to extract fc8 features from image by using a VGG network. 
+Following the original papers, we are going to extract fc8 features from the coco images by using a VGG-16 network. 
 
 First, one need to download the vgg pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/slim):
 
@@ -127,11 +127,11 @@ To do so, you need to use the pythn script guesswhat/src/guesswhat/preprocess_da
 ```
 array=( img crop )
 for mode in "${array[@]}"; do
-   python extract_img_features.py \
-     -image_dir ../../../../data/img
-     -data_dir ../../../../data
-     -data_out ../../../../data
-     -network ../../../../data/vgg_16.ckpt
+   python guesswhat/src/guesswhat/preprocess_data/extract_img_features.py \
+     -image_dir data/img
+     -data_dir data
+     -data_out data
+     -network data/vgg_16.ckpt
      -feature_name fc8
      -mode $mode
 do
@@ -144,9 +144,9 @@ Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please fo
 To create the GuessWhat?! dictionary, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/create_dico.py .
 
 ```
-python create_dico.py \
-  -dataset_path ../../../../data
-  -dico_path ../../../../data/dico.json
+python guesswhat/src/guesswhat/preprocess_data/create_dico.py \
+  -dataset_path data
+  -dico_path data/dico.json
 ```
 
 ### Train Oracle
