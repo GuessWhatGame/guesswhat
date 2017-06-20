@@ -55,13 +55,13 @@ guesswhat
 ├── config         # store the configuration file to create/train models
 |   ├── oracle
 |   ├── guesser
-|   └── qgen
+|   ├── qgen
 |   └── loop
 |
 ├── out            # store the output experiments (checkpoint, logs etc.)
 |   ├── oracle
 |   ├── guesser
-|   └── qgen
+|   ├── qgen
 |   └── loop
 |
 ├── data          # contains the Guesshat data
@@ -80,8 +80,8 @@ Of course, one is free to change this file architecture to its need!
 
 ### Data
 GuessWhat?! relies on two datasets:
- - the GuessWhat?! dataset that contains the dialogue inputs
- - The MS Coco dataset that contains the image inputs
+ - the [GuessWhat?!](https://guesswhat.ai/) dataset that contains the dialogue inputs
+ - The [MS Coco](http://mscoco.org/) dataset that contains the image inputs
 
 To download the GuessWhat?! dataset please follow the following instruction:
 ```
@@ -114,8 +114,7 @@ Before starting the training, one needs to compute the image features and the wo
 #### Extract image features
 Following the original papers, we are going to extract fc8 features from image by using a VGG network. 
 
-First, one need to download the vgg pretrained network provided by tensorflow:
-https://github.com/tensorflow/models/tree/master/slim
+First, one need to download the vgg pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/slim):
 
 ```
 wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz guesswhat/data/
@@ -142,5 +141,24 @@ Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please fo
 
 #### Create dictionnary
 
+To create the GuessWhat?! dictionary, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/create_dico.py .
+
+```
+python create_dico.py \
+  -dataset_path ../../../../data
+  -dico_path ../../../../data/dico.json
+```
+
+### Train Oracle
+
+
+### Train Guesser
+
+
+### Train QGen
+
+### Train Looper
+
+## Train your model!
 
 ## Citation
