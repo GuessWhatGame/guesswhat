@@ -16,9 +16,10 @@ The project is part of the CHISTERA - IGLU Project.
 * [Installation](#installation)
     * [Requirements](#requirements)
     * [Submodules](#submodules)
+    * [File architecture](#file-architecture)
     * [Data](#data)
 * [Reproducing results](#reproducing-results)
-    * [Data](#data)
+    * [Process Data](#data)
     * [Train Oracle](#oracle)
     * [Train Guesser](#guesser)
     * [Train Qgen](#qgen)
@@ -36,8 +37,7 @@ It requires the following python packages:
 ```
 pip install \
     tensorflow-gpu \
-    PIL \
-    pikcle \
+    nltk \
     tqdm
 ```
 
@@ -47,10 +47,8 @@ Our code has internal dependences. To properly clone the repo, please use the fo
 ```
 git clone --recursive git@github.com:GuessWhatGame/guesswhat.git
 ```
-
 ### File architecture
 In the following, we assume that the following file/folder architecture is respected:
-
 
 ```
 guesswhat
@@ -107,7 +105,42 @@ To do so, you can use the following command:
 md5sum $file
 ```
 
-
 ## Reproducing results
+
+### Process Data
+
+Before starting the training, one needs to compute the image features and the word dictionnary
+
+#### Extract image features
+Following the original papers, we are going to extract fc8 features from image by using a VGG network. 
+
+First, one need to download the vgg pretrained network provided by tensorflow:
+https://github.com/tensorflow/models/tree/master/slim
+
+```
+wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz guesswhat/data/
+tar zxvf vgg_16_2016_08_28.tar.gz 
+rm vgg_16_2016_08_28.tar.gz
+```
+
+GuessWhat?! requires to both computes the image features from the full picture 
+To do so, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/extract_img_features.py .
+```
+array=( img crop )
+for mode in "${array[@]}"; do
+   python extract_img_features.py \
+     -image_dir ../../../../data/img
+     -data_dir ../../../../data
+     -data_out ../../../../data
+     -network ../../../../data/vgg_16.ckpt
+     -feature_name fc8
+     -mode $mode
+do
+```
+
+Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please follow the script documentation for more advanced setting. 
+
+#### Create dictionnary
+
 
 ## Citation
