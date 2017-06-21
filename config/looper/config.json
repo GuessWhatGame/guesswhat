@@ -7,8 +7,9 @@
   },
 
   "loop": {
-    "max_question": 8,
-    "max_depth" : 12
+    "max_question": 5,
+    "max_depth" : 12,
+    "beam_k_best" : 20
   },
 
   "seed": 1

@@ -262,7 +262,7 @@ if __name__ == '__main__':
                                  batchifier=eval_batchifier,
                                  shuffle=False,
                                  use_padding=True)
-        test_score = looper_evaluator.process(sess, test_iterator)
+        test_score = looper_evaluator.process(sess, test_iterator, mode="sampling")
         logger.info("Test (Init) success ratio : {}".format(test_score))
 
         logs = []
@@ -277,14 +277,15 @@ if __name__ == '__main__':
                                       batchifier=train_batchifier,
                                       use_padding=True)
             train_score = looper_evaluator.process(sess, train_iterator,
-                                                   optimizer=optimizer)
+                                                   optimizer=optimizer,
+                                                   mode="sampling")
 
             valid_iterator = Iterator(validset, pool=cpu_pool,
                                       batch_size=batch_size,
                                       batchifier=eval_batchifier,
                                       shuffle=False,
                                       use_padding=True)
-            val_score = looper_evaluator.process(sess, valid_iterator)
+            val_score = looper_evaluator.process(sess, valid_iterator, mode="sampling")
 
             logger.info("Train (Explore) success ratio : {}".format(train_score))
             logger.info("Val success ratio : {}".format(val_score))
@@ -301,7 +302,7 @@ if __name__ == '__main__':
                                  batchifier=eval_batchifier,
                                  shuffle=False,
                                  use_padding=True)
-        test_score = looper_evaluator.process(sess, test_iterator)
+        test_score = looper_evaluator.process(sess, test_iterator, mode="sampling")
         logger.info("Test success ratio : {}".format(test_score))
         # logger.info(">>>-------------- FINAL SCORE ---------------------<<<")
         # compute_stats(sess, batch_size, env, eval_looper, beam_looper, suffix="model", do_beam=False)

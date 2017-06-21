@@ -18,12 +18,13 @@ class BasicLooper(object):
 
         self.max_no_question = config['loop']['max_question']
         self.max_depth = config['loop']['max_depth']
+        self.k_best = config['loop']['beam_k_best']
 
         self.oracle = OracleWrapper(oracle, tokenizer)
         self.guesser = GuesserWrapper(guesser)
-        self.qgen = QGenWrapper(qgen, tokenizer, max_length=self.max_depth)
+        self.qgen = QGenWrapper(qgen, tokenizer, max_length=self.max_depth, k_best=self.k_best)
 
-    def process(self, sess, iterator, optimizer=list(), greedy=False, store_games=False):
+    def process(self, sess, iterator, mode, optimizer=list(), store_games=False):
 
         # initialize the wrapper
         self.qgen.initialize(sess)
@@ -47,7 +48,7 @@ class BasicLooper(object):
 
                 # Step 1.1: Generate new question
                 padded_questions, questions, seq_length = \
-                    self.qgen.sample_next_question(sess, prev_answers, game_data=game_data, greedy=greedy)  # TODO add mode to either use sampling, greedy, BSearch
+                    self.qgen.sample_next_question(sess, prev_answers, game_data=game_data, mode=mode)
 
                 # Step 1.2: Answer the question
                 answers = self.oracle.answer_question(sess,
