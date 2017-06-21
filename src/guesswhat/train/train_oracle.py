@@ -9,11 +9,11 @@ import tensorflow as tf
 from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
+from generic.utils.config import load_config
 
 from guesswhat.data_provider.guesswhat_dataset import OracleDataset
 from guesswhat.data_provider.oracle_batchifier import OracleBatchifier
 from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
-from generic.utils.config import load_config
 
 from guesswhat.models.oracle.oracle_network import OracleNetwork
 from guesswhat.train.utils import get_img_loader, load_checkpoint
@@ -27,6 +27,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser('Oracle network baseline!')
 
     parser.add_argument("-data_dir", type=str, help="Directory with data")
+    parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
     parser.add_argument("-config", type=str, help='Config file')
     parser.add_argument("-image_dir", type=str, help='Directory with images')
     parser.add_argument("-crop_dir", type=str, help='Directory with images')
