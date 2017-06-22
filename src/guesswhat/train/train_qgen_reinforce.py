@@ -1,5 +1,4 @@
 import argparse
-import json
 import os
 from multiprocessing import Pool
 import logging
@@ -17,94 +16,12 @@ from guesswhat.models.looper.basic_looper import BasicLooper
 
 from guesswhat.data_provider.guesswhat_dataset import Dataset
 
-from guesswhat.data_provider.questioner_batchifier import QuestionerBatchifier
 from guesswhat.data_provider.looper_batchifier import LooperBatchifier
 
 from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from generic.utils.config import load_config, get_config_from_xp
 
-from guesswhat.train.utils import get_img_loader, load_checkpoint, test_model
-
-import guesswhat.data_provider as provider
-
-
-# ------------------------------------------------------
-# Initial Testing success ratio: 0.397512335526
-# Initial Valid success ratio: 0.410310444079
-# Initial Valid (explore) success ratio: 0.383782679739
-# ------------------------------------------------------
-
-
-
-
-
-def compute_stats(sess, batch_size, env, eval_looper, beam_looper, suffix, do_beam=False):
-    import numpy as np
-
-    test_score_sampling = []
-    no_loop = 1
-    for _ in range(no_loop):
-        test_score_sampling += [eval_looper.eval(sess, greedy=False, store_games=True,
-                                                 iterator=provider.GameIterator(
-                                                     env.testset,
-                                                     env.tokenizer,
-                                                     batch_size=batch_size,
-                                                     shuffle=False,
-                                                     status=('success', 'failure'),
-                                                     pad_to_batch_size=True
-                                                 ))]
-    provider.dump_samples_into_dataset(eval_looper.looper.storage, save_path, env.tokenizer, name=suffix + ".sampling")
-    # save_plots(save_path.format(""), save_path.format(""), suffix+".sampling")
-
-    test_score_greedy = eval_looper.eval(sess, greedy=True,
-                                         iterator=provider.GameIterator(
-                                             env.testset,
-                                             env.tokenizer,
-                                             batch_size=batch_size,
-                                             shuffle=False,
-                                             status=('success', 'failure'),
-                                             pad_to_batch_size=True
-                                         ))
-
-    logger.info("------------------------------------------------------")
-    logger.info("Testing (sampling) success ratio: {} +/- {}".format(np.mean(test_score_sampling), np.std(test_score_sampling)))
-    logger.info(test_score_sampling)
-    logger.info("Testing (greedy) Valid success ratio: {}".format(test_score_greedy))
-
-    if do_beam:
-        test_score_beamsearch = beam_looper.eval(sess, store_games=True,
-                                                 iterator=provider.GameIterator(
-                                                     env.testset,
-                                                     env.tokenizer,
-                                                     batch_size=1,
-                                                     shuffle=False,
-                                                     status=('success', 'failure'),
-                                                     pad_to_batch_size=True
-                                                 ))
-        provider.dump_samples_into_dataset(beam_looper.storage, save_path, env.tokenizer, name=suffix + ".beam")
-        # save_plots(save_path.format(""), save_path.format(""), suffix + ".beam")
-        logger.info("Testing (BS) success ratio: {}".format(test_score_beamsearch))
-
-    explore_sampling = []
-    explore_greedy = []
-    for _ in range(no_loop):
-        explore_sampling += [eval_looper.eval(sess, provider.LoopIterator(env.trainset, batch_size=batch_size))]
-        explore_greedy += [eval_looper.eval(sess, greedy=True, iterator=provider.LoopIterator(env.trainset, batch_size=batch_size))]
-
-    logger.info("------------------------------------------------------")
-    logger.info("Explore (sampling) success ratio: {} +/- {}".format(np.mean(explore_sampling), np.std(explore_sampling)))
-    logger.info("Explore (greedy) Valid success ratio: {} +/- {}".format(np.mean(explore_greedy), np.std(explore_greedy)))
-    logger.info(test_score_sampling)
-    logger.info(explore_greedy)
-
-    # if do_beam:
-    #     explore_beam_search = []
-    #     for _ in range(1):#range(int(no_loop/2+1)):
-    #         explore_beam_search += [beam_looper.eval(sess, iterator=provider.LoopIterator(env.trainset, batch_size=1))]
-    #     logger.info("Explore (BS) success ratio: {} +/- {} ".format(np.mean(explore_beam_search), np.std(explore_beam_search)))
-    #
-    #     logger.info(explore_beam_search)
-    logger.info("------------------------------------------------------")
+from guesswhat.train.utils import get_img_loader, test_model
 
 
 if __name__ == '__main__':
@@ -252,18 +169,13 @@ if __name__ == '__main__':
                                        qgen=qgen_network,
                                        tokenizer=tokenizer)
 
-        # Evaluate starting point
-        # logger.info(">>>-------------- INITIALISATION ---------------------<<<")
-        # compute_stats(sess, batch_size, env, eval_looper, beam_looper, suffix="start", do_beam=True)
-        # logger.info(">>>---------------------------------------------------<<<")
-
         test_iterator = Iterator(testset, pool=cpu_pool,
                                  batch_size=batch_size,
                                  batchifier=eval_batchifier,
                                  shuffle=False,
                                  use_padding=True)
         test_score = looper_evaluator.process(sess, test_iterator, mode="sampling")
-        logger.info("Test (Init) success ratio : {}".format(test_score))
+        logger.info("Test success ratio (Init-Sampling): {}".format(test_score))
 
         logs = []
         # Start training
@@ -295,6 +207,7 @@ if __name__ == '__main__':
                 final_val_score = val_score
                 loop_saver.save(sess, save_path.format('params.ckpt'))
 
+        logger.info(">>>-------------- FINAL SCORE ---------------------<<<")
         # Compute the test score with early stopping
         loop_saver.restore(sess, save_path.format('params.ckpt'))
         test_iterator = Iterator(testset, pool=cpu_pool,
@@ -303,7 +216,14 @@ if __name__ == '__main__':
                                  shuffle=False,
                                  use_padding=True)
         test_score = looper_evaluator.process(sess, test_iterator, mode="sampling")
-        logger.info("Test success ratio : {}".format(test_score))
-        # logger.info(">>>-------------- FINAL SCORE ---------------------<<<")
-        # compute_stats(sess, batch_size, env, eval_looper, beam_looper, suffix="model", do_beam=False)
-        # logger.info(">>>------------------------------------------------<<<")
+        logger.info("Test success ratio (sampling): {}".format(test_score))
+
+        test_iterator = Iterator(testset, pool=cpu_pool,
+                                 batch_size=batch_size,
+                                 batchifier=eval_batchifier,
+                                 shuffle=False,
+                                 use_padding=True)
+        test_score = looper_evaluator.process(sess, test_iterator, mode="greedy")
+        logger.info("Test success ratio (greedy): {}".format(test_score))
+
+        logger.info(">>>------------------------------------------------<<<")

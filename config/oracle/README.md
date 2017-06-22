@@ -1,8 +1,7 @@
-# oracle config
+# Oracle config
 
+The oracle task requires to produce a yes-no answer for any object within a picture given a natural language question.
 Given an question, a picture and a specific object in the picture, the oracle must provide a valid yes/no answer
-Example:
-
 
 The configuration file is divided into four parts:
  - Oracle inputs
@@ -10,8 +9,9 @@ The configuration file is divided into four parts:
  - Oracle training
  - Others
 
-
-The "inputs" key enable to add/remove oracle inputs.
+There are several way way to encode the target object for the oracle.
+Should one use the crop of the object, its spatial features, its category etc.
+The keyword "inputs" enables to add/remove oracle inputs.
 
 ```
   "inputs": {
@@ -25,7 +25,7 @@ The "inputs" key enable to add/remove oracle inputs.
 ```
 
 
-The "model" key refers to the specific configuration of each oracle input to build the final network:
+The keyword  "model" refers to the oracle input configuration:
 ```
 "model": {
     "question": {
@@ -45,7 +45,7 @@ The "model" key refers to the specific configuration of each oracle input to bui
 
     "crop": {
       "image_input": "raw"/"features",  # the type of crop inputs (*raw* images VS preprocess image *features*)
-      "dim": list                       # the dimensin of crop inputs. Ex fc7: [4000], resnet-224*224: [7,7,2048] etc.
+      "dim": list(int)                  # the dimensin of crop inputs. Ex fc7: [4000], resnet-224*224: [7,7,2048] etc.
     }
 
     "MLP": {
@@ -55,7 +55,7 @@ The "model" key refers to the specific configuration of each oracle input to bui
   },
 ```
 
-The "optimizer" key refers to the training hyperparameters:
+The keyword  "optimizer" refers to the training hyperparameters:
 
 
 ```

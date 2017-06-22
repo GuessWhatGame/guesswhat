@@ -1,6 +1,5 @@
 {
   "model": {
-    "fc8_dim": 1000,
     "word_emb_dim": 512,
     "num_lstm_units": 512,
     "cat_emb_dim": 256,
@@ -8,7 +7,6 @@
     "dialog_emb_dim": 512,
     "spat_dim": 8,
     "no_categories": 90,
-    "no_words" : 4901
   },
 
   "optimizer": {

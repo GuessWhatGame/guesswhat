@@ -27,6 +27,9 @@ The project is part of the CHISTERA - IGLU Project.
 
 ## Introduction
 
+We introduce \GW, a two-player guessing game as a testbed for research on the interplay of computer vision and dialogue systems. The goal of the game is to locate an unknown object in a rich image scene by asking a sequence of questions.
+Higher-level image understanding, like spatial reasoning and language grounding, is required to solve the proposed task.
+
 ## Installation
 
 ### Requirements
@@ -188,7 +191,7 @@ python src/guesswhat/train/train_guesser.py \
 ### Train QGen
 Identically, you first have to update the config/guesser/config.json
 ```
-python src/guesswhat/train/train_qgen.py \
+python src/guesswhat/train/train_qgen_supervised.py \
    -data_dir data \
    -image_dir data/vgg_img \
    -config config/qgen/config.json \
@@ -198,6 +201,51 @@ python src/guesswhat/train/train_qgen.py \
 
 ### Train Looper
 
-## Train your model!
+The looper use three pretrained models to play the GuessWhat?! game.
+Therefore, it provides a user-simulation scheme to perform RL training methods.
+
+In this codebase, the QGen is fine-tuned by using REINFORCE.
+The QGen keep playing GuessWhat?! with the Oracle and it is rewarded when the Guesser find the correct object at the end of the dialogue.
+
+To do so, one need to first pretrain the three models.
+Each model has a configuration hash and checkpoint. These configuration hash will be used as an entry point for the Looper.
+
+```
+python src/guesswhat/train/train_qgen_reinforce.py
+    -data_dir data/ \
+    -exp_dir out/loop/ \
+    -config config/looper/config.json \
+    -image_dir data/vgg_img \
+    -networks_dir out \
+    -no_thread 2
+```
 
 ## Citation
+
+GuessWhat?! framework - https://arxiv.org/abs/1611.08481
+```
+@inproceedings{guesswhat_game,
+author = {Harm de Vries and Florian Strub and Sarath Chandar and Olivier Pietquin and Hugo Larochelle and Aaron C. Courville},
+title = {GuessWhat?! Visual object discovery through multi-modal dialogue},
+booktitle = {Conference on Computer Vision and Pattern Recognition (CVPR)},
+year = {2017}
+}
+```
+
+Reinforcement Learning applied to GuessWhat?! - https://arxiv.org/abs/1703.05423
+```
+@inproceedings{end_to_end_gw,
+author = {Florian Strub and Harm de Vries and J\'er\'emie Mary and Bilal Piot and Aaron C. Courville and Olivier Pietquin},
+title = {End-to-end optimization of goal-driven and visually grounded dialogue systems},
+booktitle = {International Joint Conference on Artificial Intelligence (IJCAI)},
+year = {2017}
+}
+```
+
+## Acknowledgement
+ - SequeL Team
+ - Mila Team
+
+
+
+
