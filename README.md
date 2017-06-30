@@ -8,8 +8,6 @@ The code was equally developed bu Florian Strub (University of Lille) and Harm d
 
 The project is part of the CHISTERA - IGLU Project.
 
-
-
 #### Summary:
 
 * [Introduction](#introduction)
@@ -224,6 +222,8 @@ python src/guesswhat/train/train_qgen_supervised.py \
    -no_thread 2 
 ```
 
+After training, we obtained the following results:
+
 | Set       | Loss  |
 | --------  |:-----:|
 | Train     | 1.31 |
@@ -286,7 +286,4 @@ year = {2017}
 ## Acknowledgement
  - SequeL Team
  - Mila Team
-
-
-
 
