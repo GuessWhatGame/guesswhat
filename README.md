@@ -1,4 +1,4 @@
-# guesswhat
+# Guesswhat?! models
 
 This repo aim at reproducing the results from the series of GuessWhat?! papers, namely:
 - GuessWhat?! Visual object discovery through multi-modal dialogue - https://arxiv.org/abs/1611.08481
@@ -159,6 +159,13 @@ python src/guesswhat/preprocess_data/create_dico.py \
   -dico_path data/dico.json
 ```
 
+#### Pretrained networks
+
+Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained_models.zip).
+(Warning Tensorflow 1.1)
+
+
+
 ### Train Oracle
 To train the oracle, you need to select/configure the input you want to use.
 To do so, you have update the file config/oracle/config.json
@@ -176,6 +183,15 @@ python src/guesswhat/train/train_oracle.py \
    -no_thread 2 
 ```
 
+After training, we obtained the following results:
+
+| Set       | Loss   | Error |
+| --------  |:-----:| -----:|
+| Train     | 0.130 | 17.5% |
+| Valid     | 0.155 | 20.6% |
+| Test      | 0.157 | 21.1% |
+
+
 ### Train Guesser
 Identically, you first have to update the config/guesser/config.json
 
@@ -188,6 +204,15 @@ python src/guesswhat/train/train_guesser.py \
    -no_thread 2 
 ```
 
+After training, we obtained the following results:
+
+| Set       | Loss   | Error |
+| --------  |:-----:| -----:|
+| Train     | 0.681 | 27.6% |
+| Valid     | 0.906 | 34.7% |
+| Test      | 0.947 | 35.8% |
+
+
 ### Train QGen
 Identically, you first have to update the config/guesser/config.json
 ```
@@ -198,6 +223,13 @@ python src/guesswhat/train/train_qgen_supervised.py \
    -exp_dir out/qgen \
    -no_thread 2 
 ```
+
+| Set       | Loss  |
+| --------  |:-----:|
+| Train     | 1.31 |
+| Valid     | 1.75 |
+| Test      | 1.76 |
+
 
 ### Train Looper
 
@@ -219,6 +251,15 @@ python src/guesswhat/train/train_qgen_reinforce.py
     -networks_dir out \
     -no_thread 2
 ```
+
+We obtain the following scores (with +/- 0.3%)
+
+| Set       | Cross-entropy   | Reinforce |
+| --------  |:-----:| -----:|
+| Train (new object)    | 39.0% | 58.5% |
+| Valid (new images)    | 41.8% | 57.6% |
+| Test  (new images)    | 39.8% | 56.4% |
+
 
 ## Citation
 
