@@ -14,10 +14,11 @@ The project is part of the CHISTERA - IGLU Project.
 
 * [Introduction](#introduction)
 * [Installation](#installation)
+    * [Download](#Download)
     * [Requirements](#requirements)
-    * [Submodules](#submodules)
     * [File architecture](#file-architecture)
     * [Data](#data)
+    * [Pretrained models](#pretrained-models)
 * [Reproducing results](#reproducing-results)
     * [Process Data](#data)
     * [Train Oracle](#oracle)
@@ -32,6 +33,15 @@ Higher-level image understanding, like spatial reasoning and language grounding,
 
 ## Installation
 
+
+### Download
+
+Our code has internal dependences called submodules. To properly clone the repository, please use the following git command:\
+
+```
+git clone --recursive git@github.com:GuessWhatGame/guesswhat.git
+```
+
 ### Requirements
 
 The code works on both python 2 and 3. It relies on the tensorflow python API.
@@ -44,12 +54,7 @@ pip install \
     tqdm
 ```
 
-### Submodules
-Our code has internal dependences. To properly clone the repo, please use the following git commands:\
 
-```
-git clone --recursive git@github.com:GuessWhatGame/guesswhat.git
-```
 ### File architecture
 In the following, we assume that the following file/folder architecture is respected:
 
@@ -118,6 +123,13 @@ To do so, you can use the following command:
 md5sum $file
 ```
 
+
+### Pretrained networks
+
+Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained_models.zip).
+(Warning Tensorflow 1.1). Those networks can then be loaded to reproduce the results.
+
+
 ## Reproducing results
 
 ### Process Data
@@ -162,12 +174,6 @@ python src/guesswhat/preprocess_data/create_dico.py \
   -dataset_path data
   -dico_path data/dico.json
 ```
-
-#### Pretrained networks
-
-Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained_models.zip).
-(Warning Tensorflow 1.1)
-
 
 
 ### Train Oracle
