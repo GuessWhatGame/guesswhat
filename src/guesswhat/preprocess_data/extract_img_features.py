@@ -138,6 +138,11 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
 
 if args.network == "vgg":
     print("Dump file...")
+    try:
+        # this isn't done for vgg above, only for resnet
+        os.makedirs(out_dir)
+    except FileExistsError:
+        pass
     pickle_dump(features, os.path.join(out_dir, feature_name))
 
 print("Done!")
