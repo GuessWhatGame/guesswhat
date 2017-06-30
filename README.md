@@ -74,6 +74,7 @@ guesswhat
 |
 ├── data          # contains the Guesshat data
 |   └── img       # contains the coco img
+|        └── raw
 |
 ├── vqa            # vqa package dir
 |   ├── datasets   # datasets classes & functions dir (vqa, coco, images, features, etc.)
