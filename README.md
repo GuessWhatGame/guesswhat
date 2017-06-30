@@ -101,17 +101,17 @@ GuessWhat?! relies on two datasets:
 
 To download the GuessWhat?! dataset please follow the following instruction:
 ```
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz -P data/img/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz -P data/img/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz -P data/img/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz -P data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz -P data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz -P data/
 ```
 
 To download the MS Coco dataset, please follow the following instruction:
 ```
-wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip -P data/
+wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip -P data/img/
 unzip data/img/train2014.zip -d data/img/raw
 
-wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip -P data/
+wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip -P data/img/
 unzip data/img/val2014.zip -d data/img/raw
 
 # creates a folder `raw` with filenames as expected by preprocessing script below
