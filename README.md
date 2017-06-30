@@ -88,7 +88,7 @@ To complete the git-clone file arhictecture, you can do:
 
 ```
 cd guesswhat
-mkdir data; mkdir data/img ; mkdir img/plain
+mkdir data; mkdir data/img ; mkdir data/img/raw
 mkdir out; mkdir out/oracle ; mkdir out/guesser; mkdir out/qgen; mkdir out/looper ; 
 ```
 
@@ -109,12 +109,12 @@ wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz -P da
 To download the MS Coco dataset, please follow the following instruction:
 ```
 wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip -P data/
-unzip data/train2014.zip guesswhat/data/img
+unzip data/train2014.zip guesswhat/data/img/raw
 
 wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip P data/
-unzip data/val2014.zip guesswhat/data/img
+unzip data/val2014.zip guesswhat/data/img/raw
 
-# creates a folder `plain` with filenames as expected by preprocessing script below
+# creates a folder `raw` with filenames as expected by preprocessing script below
 python ./src/guesswhat/preprocess_data/make_cococaption_id_names.py guesswhat/data/img
 ```
 
