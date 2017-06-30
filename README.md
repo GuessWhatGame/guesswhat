@@ -87,6 +87,7 @@ guesswhat
 To complete the git-clone file arhictecture, you can do:
 
 ```
+cd guesswhat
 mkdir data; mkdir data/img ; mkdir img/plain
 mkdir out; mkdir out/oracle ; mkdir out/guesser; mkdir out/qgen; mkdir out/looper ; 
 ```
