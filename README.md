@@ -102,11 +102,14 @@ wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz data/
 
 To download the MS Coco dataset, please follow the following instruction:
 ```
-wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip data/
+wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip
 unzip train2014.zip guesswhat/data/img
 
 wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip
 unzip val2014.zip guesswhat/data/img
+
+# creates a folder `plain` with filenames as expected by preprocessing script below
+python ./src/guesswhat/preprocess_data/make_cococaption_id_names.py guesswhat/data/img
 ```
 
 NB: Please check that md5sum are correct after downloading the files to check whether they have been corrupted.
@@ -138,10 +141,11 @@ To do so, you need to use the pythn script guesswhat/src/guesswhat/preprocess_da
 array=( img crop )
 for mode in "${array[@]}"; do
    python src/guesswhat/preprocess_data/extract_img_features.py \
-     -image_dir data/img
+     -image_dir data/img/plain
      -data_dir data
      -data_out data
-     -network data/vgg_16.ckpt
+     -network vgg
+     -ckpt data/vgg_16.ckpt
      -feature_name fc8
      -mode $mode
 do
