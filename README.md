@@ -101,18 +101,18 @@ GuessWhat?! relies on two datasets:
 
 To download the GuessWhat?! dataset please follow the following instruction:
 ```
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz -P data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz -P data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz -P data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz -P data/img/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz -P data/img/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz -P data/img/
 ```
 
 To download the MS Coco dataset, please follow the following instruction:
 ```
 wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip -P data/
-unzip data/train2014.zip guesswhat/data/img/raw
+unzip data/img/train2014.zip -d data/img/raw
 
-wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip P data/
-unzip data/val2014.zip guesswhat/data/img/raw
+wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip -P data/
+unzip data/img/val2014.zip -d data/img/raw
 
 # creates a folder `raw` with filenames as expected by preprocessing script below
 python ./src/guesswhat/preprocess_data/make_cococaption_id_names.py guesswhat/data/img
