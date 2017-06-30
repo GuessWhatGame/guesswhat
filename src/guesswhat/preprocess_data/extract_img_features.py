@@ -143,6 +143,6 @@ if args.network == "vgg":
         os.makedirs(out_dir)
     except FileExistsError:
         pass
-    pickle_dump(features, os.path.join(out_dir, feature_name))
+    pickle_dump(features, os.path.join(out_dir, feature_name + ".pkl"))
 
 print("Done!")
