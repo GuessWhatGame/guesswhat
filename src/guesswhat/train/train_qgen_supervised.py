@@ -16,7 +16,7 @@ from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from generic.utils.config import load_config
 
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
-import guesswhat.models.qgen.qgen_beamsearch as bm
+# import guesswhat.models.qgen.qgen_beamsearch as bm
 
 from guesswhat.train.utils import get_img_loader, load_checkpoint
 
