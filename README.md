@@ -82,7 +82,7 @@ guesswhat
 To complete the git-clone file arhictecture, you can do:
 
 ```
-mkdir data; mkdir data/img
+mkdir data; mkdir data/img ; mkdir img/plain
 mkdir out; mkdir out/oracle ; mkdir out/guesser; mkdir out/qgen; mkdir out/looper ; 
 ```
 
@@ -95,18 +95,18 @@ GuessWhat?! relies on two datasets:
 
 To download the GuessWhat?! dataset please follow the following instruction:
 ```
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz -P data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz -P data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz -P data/
 ```
 
 To download the MS Coco dataset, please follow the following instruction:
 ```
-wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip
-unzip train2014.zip guesswhat/data/img
+wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip -P data/
+unzip data/train2014.zip guesswhat/data/img
 
-wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip
-unzip val2014.zip guesswhat/data/img
+wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip P data/
+unzip data/val2014.zip guesswhat/data/img
 
 # creates a folder `plain` with filenames as expected by preprocessing script below
 python ./src/guesswhat/preprocess_data/make_cococaption_id_names.py guesswhat/data/img
