@@ -287,6 +287,9 @@ year = {2017}
  - SequeL Team
  - Mila Team
 
+We would also like people that help improving the code base namely: Rui Zhao, Hannes Schulz.
+
+
 
 
 
