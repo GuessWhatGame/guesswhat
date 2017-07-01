@@ -16,8 +16,7 @@ from nltk.tokenize import TweetTokenizer
 if __name__ == '__main__':
     parser = argparse.ArgumentParser('Creating dictionary..')
 
-    parser.add_argument("-data_dir", type=str, help="")
-    parser.add_argument("-which_set", type=str, default="train", help="")
+    parser.add_argument("-data_dir", type=str, help="Path where are the Guesswhat dataset")
     parser.add_argument("-dict_file", type=str, default="dict.json", help="Name of the dictionary file")
     parser.add_argument("-min_occ", type=int, default=3,
                         help='Minimum number of occurences to add word to dictionary')
@@ -40,9 +39,8 @@ if __name__ == '__main__':
     tknzr = TweetTokenizer(preserve_case=False)
 
 
-    print("Processing {} dataset...".format(args.which_set))
-    file = "guesswhat.{}.jsonl.gz".format(args.which_set)
-    path = os.path.join(args.data_dir, file)
+    print("Processing train dataset...")
+    path = os.path.join(args.data_dir, "guesswhat.train.jsonl.gz")
     with gzip.open(path) as f:
         for k , line in enumerate(f):
             dialogue = json.loads(line)
