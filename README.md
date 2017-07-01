@@ -22,6 +22,7 @@ The project is part of the CHISTERA - IGLU Project.
     * [Train Oracle](#oracle)
     * [Train Guesser](#guesser)
     * [Train Qgen](#qgen)
+* [FAQ](#faq)    
 * [Citation](#citation)
 
 ## Introduction
@@ -134,6 +135,12 @@ Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained
 
 ## Reproducing results
 
+To launch the experiments in the local directory, you first have to set the pyhton path:
+```
+export PYTHONPATH=src:${PYTHONPATH} 
+```
+Note that you can also directly execute the experiments in the source folder.
+
 ### Process Data
 
 Before starting the training, one needs to compute the image features and the word dictionnary
@@ -145,13 +152,12 @@ First, one need to download the vgg pretrained network provided by [slim-tensorf
 
 ```
 wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz -P data/
-tar zxvf vgg_16_2016_08_28.tar.gz 
+tar zxvf data/vgg_16_2016_08_28.tar.gz -C data/
 ```
 
 GuessWhat?! requires to both computes the image features from the full picture 
 To do so, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/extract_img_features.py .
 ```
-export PYTHONPATH=src
 array=( img crop )
 for mode in "${array[@]}"; do
    python src/guesswhat/preprocess_data/extract_img_features.py \
@@ -172,7 +178,7 @@ Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please fo
 To create the GuessWhat?! dictionary, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/create_dico.py .
 
 ```
-PYTHONPATH=src; python src/guesswhat/preprocess_data/create_dictionary.py -dataset_path data  
+python src/guesswhat/preprocess_data/create_dictionary.py -dataset_path data  
 ```
 
 
@@ -184,7 +190,7 @@ More information are available in the config folder.
 
 Once the config file is set, you can launch the training step:
 ```
-PYTHONPATH=src; python src/guesswhat/train/train_oracle.py \
+python src/guesswhat/train/train_oracle.py \
    -data_dir data \
    -image_dir data/vgg_img \
    -crop_dir data/vgg_crop \
@@ -206,7 +212,7 @@ After training, we obtained the following results:
 Identically, you first have to update the config/guesser/config.json
 
 ```
-PYTHONPATH=src; python src/guesswhat/train/train_guesser.py \
+python src/guesswhat/train/train_guesser.py \
    -data_dir data \
    -image_dir data/vgg_img \
    -config config/guesser/config.json \
@@ -226,7 +232,7 @@ After training, we obtained the following results:
 ### Train QGen
 Identically, you first have to update the config/guesser/config.json
 ```
-PYTHONPATH=src; python src/guesswhat/train/train_qgen_supervised.py \
+python src/guesswhat/train/train_qgen_supervised.py \
    -data_dir data \
    -image_dir data/vgg_img \
    -config config/qgen/config.json \
@@ -255,7 +261,7 @@ To do so, one need to first pretrain the three models.
 Each model has a configuration hash and checkpoint. These configuration hash will be used as an entry point for the Looper.
 
 ```
-PYTHONPATH=src; python src/guesswhat/train/train_qgen_reinforce.py
+python src/guesswhat/train/train_qgen_reinforce.py
     -data_dir data/ \
     -exp_dir out/loop/ \
     -config config/looper/config.json \
@@ -272,6 +278,10 @@ We obtain the following scores (with +/- 0.3%)
 | Valid (new images)    | 41.8% | 57.6% |
 | Test  (new images)    | 39.8% | 56.4% |
 
+## FAQ
+
+ - When I start a python script, I have the following message: ImportError: No module named generic.data_provider.iterator (or equivalent module). It is likely that your python path is not correctly set. Add the "src" folder to your python path (PYTHONPATH=src)
+ 
 
 ## Citation
 
