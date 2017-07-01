@@ -114,7 +114,9 @@ wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip -P data/img/
 unzip data/img/val2014.zip -d data/img/raw
 
 # creates a folder `raw` with filenames as expected by preprocessing script below
-python ./src/guesswhat/preprocess_data/make_cococaption_id_names.py guesswhat/data/img
+python ./src/guesswhat/preprocess_data/rewire_coco_image_id.py \ 
+   -image_dir `pwd`/data/img/raw \
+   -data_out `pwd`/data/img/raw
 ```
 
 NB: Please check that md5sum are correct after downloading the files to check whether they have been corrupted.
@@ -142,23 +144,23 @@ Following the original papers, we are going to extract fc8 features from the coc
 First, one need to download the vgg pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/slim):
 
 ```
-wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz data/
+wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz -P data/
 tar zxvf vgg_16_2016_08_28.tar.gz 
-rm vgg_16_2016_08_28.tar.gz
 ```
 
 GuessWhat?! requires to both computes the image features from the full picture 
 To do so, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/extract_img_features.py .
 ```
+export PYTHONPATH=src
 array=( img crop )
 for mode in "${array[@]}"; do
    python src/guesswhat/preprocess_data/extract_img_features.py \
-     -image_dir data/img/plain
-     -data_dir data
-     -data_out data
-     -network vgg
-     -ckpt data/vgg_16.ckpt
-     -feature_name fc8
+     -image_dir data/img/raw \
+     -data_dir data \
+     -data_out data \
+     -network vgg \
+     -ckpt data/vgg_16.ckpt \
+     -feature_name fc8 \
      -mode $mode
 done
 ```
@@ -170,7 +172,7 @@ Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please fo
 To create the GuessWhat?! dictionary, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/create_dico.py .
 
 ```
-python src/guesswhat/preprocess_data/create_dico.py \
+PYTHONPATH=src; python src/guesswhat/preprocess_data/create_dico.py \
   -dataset_path data
   -dico_path data/dico.json
 ```
@@ -184,7 +186,7 @@ More information are available in the config folder.
 
 Once the config file is set, you can launch the training step:
 ```
-python src/guesswhat/train/train_oracle.py \
+PYTHONPATH=src; python src/guesswhat/train/train_oracle.py \
    -data_dir data \
    -image_dir data/vgg_img \
    -crop_dir data/vgg_crop \
@@ -206,7 +208,7 @@ After training, we obtained the following results:
 Identically, you first have to update the config/guesser/config.json
 
 ```
-python src/guesswhat/train/train_guesser.py \
+PYTHONPATH=src; python src/guesswhat/train/train_guesser.py \
    -data_dir data \
    -image_dir data/vgg_img \
    -config config/guesser/config.json \
@@ -226,7 +228,7 @@ After training, we obtained the following results:
 ### Train QGen
 Identically, you first have to update the config/guesser/config.json
 ```
-python src/guesswhat/train/train_qgen_supervised.py \
+PYTHONPATH=src; python src/guesswhat/train/train_qgen_supervised.py \
    -data_dir data \
    -image_dir data/vgg_img \
    -config config/qgen/config.json \
@@ -255,7 +257,7 @@ To do so, one need to first pretrain the three models.
 Each model has a configuration hash and checkpoint. These configuration hash will be used as an entry point for the Looper.
 
 ```
-python src/guesswhat/train/train_qgen_reinforce.py
+PYTHONPATH=src; python src/guesswhat/train/train_qgen_reinforce.py
     -data_dir data/ \
     -exp_dir out/loop/ \
     -config config/looper/config.json \
