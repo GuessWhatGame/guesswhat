@@ -114,7 +114,9 @@ wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip -P data/img/
 unzip data/img/val2014.zip -d data/img/raw
 
 # creates a folder `raw` with filenames as expected by preprocessing script below
-python ./src/guesswhat/preprocess_data/make_cococaption_id_names.py guesswhat/data/img
+python ./src/guesswhat/preprocess_data/rewire_coco_image_id.py \ 
+   -image_dir `pwd`/data/img/raw \
+   -data_out `pwd`/data/img/raw
 ```
 
 NB: Please check that md5sum are correct after downloading the files to check whether they have been corrupted.
