@@ -32,7 +32,7 @@ parser.add_argument("-network", type=str, choices=["resnet", "vgg"], help="Use r
 parser.add_argument("-ckpt", type=str, help="Path for network checkpoint: ")
 parser.add_argument("-feature_name", type=str, default="", help="Pick the name of the network features default=(fc8 - block4)")
 
-parser.add_argument("-mode", type=str, choice=["img", "crop"], help="Select to either dump the img/crop feature")
+parser.add_argument("-mode", type=str, choices=["img", "crop"], help="Select to either dump the img/crop feature")
 parser.add_argument("-subtract_mean", type=bool, default=True, help="Preprocess the image by substracting the mean")
 parser.add_argument("-img_size", type=int, default=224, help="image size (pixels)")
 parser.add_argument("-batch_size", type=int, default=64, help="Batch size to extract features")
@@ -47,7 +47,7 @@ args = parser.parse_args()
 
 # define image
 images = tf.placeholder(tf.float32, [None, args.img_size, args.img_size, 3], name='images')
-if args.substract_mean:
+if args.subtract_mean:
     channel_mean = np.array([123.68, 116.779, 103.939])
 else:
     channel_mean = None
@@ -138,6 +138,10 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
 
 if args.network == "vgg":
     print("Dump file...")
-    pickle_dump(features, os.path.join(out_dir, feature_name))
+    
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    
+    pickle_dump(features, os.path.join(out_dir, feature_name + ".pkl"))
 
 print("Done!")
