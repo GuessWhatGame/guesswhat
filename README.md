@@ -12,10 +12,11 @@ The project is part of the CHISTERA - IGLU Project.
 
 * [Introduction](#introduction)
 * [Installation](#installation)
+    * [Download](#Download)
     * [Requirements](#requirements)
-    * [Submodules](#submodules)
     * [File architecture](#file-architecture)
     * [Data](#data)
+    * [Pretrained models](#pretrained-models)
 * [Reproducing results](#reproducing-results)
     * [Process Data](#data)
     * [Train Oracle](#oracle)
@@ -30,6 +31,15 @@ Higher-level image understanding, like spatial reasoning and language grounding,
 
 ## Installation
 
+
+### Download
+
+Our code has internal dependences called submodules. To properly clone the repository, please use the following git command:\
+
+```
+git clone --recursive git@github.com:GuessWhatGame/guesswhat.git
+```
+
 ### Requirements
 
 The code works on both python 2 and 3. It relies on the tensorflow python API.
@@ -42,12 +52,7 @@ pip install \
     tqdm
 ```
 
-### Submodules
-Our code has internal dependences. To properly clone the repo, please use the following git commands:\
 
-```
-git clone --recursive git@github.com:GuessWhatGame/guesswhat.git
-```
 ### File architecture
 In the following, we assume that the following file/folder architecture is respected:
 
@@ -67,6 +72,7 @@ guesswhat
 |
 ├── data          # contains the Guesshat data
 |   └── img       # contains the coco img
+|        └── raw
 |
 ├── vqa            # vqa package dir
 |   ├── datasets   # datasets classes & functions dir (vqa, coco, images, features, etc.)
@@ -80,7 +86,8 @@ guesswhat
 To complete the git-clone file arhictecture, you can do:
 
 ```
-mkdir data; mkdir data/img
+cd guesswhat
+mkdir data; mkdir data/img ; mkdir data/img/raw
 mkdir out; mkdir out/oracle ; mkdir out/guesser; mkdir out/qgen; mkdir out/looper ; 
 ```
 
@@ -93,20 +100,20 @@ GuessWhat?! relies on two datasets:
 
 To download the GuessWhat?! dataset please follow the following instruction:
 ```
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz -P data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz -P data/
+wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz -P data/
 ```
 
 To download the MS Coco dataset, please follow the following instruction:
 ```
-wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip
-unzip train2014.zip guesswhat/data/img
+wget http://msvocds.blob.core.windows.net/coco2014/train2014.zip -P data/img/
+unzip data/img/train2014.zip -d data/img/raw
 
-wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip
-unzip val2014.zip guesswhat/data/img
+wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip -P data/img/
+unzip data/img/val2014.zip -d data/img/raw
 
-# creates a folder `plain` with filenames as expected by preprocessing script below
+# creates a folder `raw` with filenames as expected by preprocessing script below
 python ./src/guesswhat/preprocess_data/make_cococaption_id_names.py guesswhat/data/img
 ```
 
@@ -115,6 +122,13 @@ To do so, you can use the following command:
 ```
 md5sum $file
 ```
+
+
+### Pretrained networks
+
+Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained_models.zip).
+(Warning Tensorflow 1.1). Those networks can then be loaded to reproduce the results.
+
 
 ## Reproducing results
 
@@ -160,12 +174,6 @@ python src/guesswhat/preprocess_data/create_dico.py \
   -dataset_path data
   -dico_path data/dico.json
 ```
-
-#### Pretrained networks
-
-Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained_models.zip).
-(Warning Tensorflow 1.1)
-
 
 
 ### Train Oracle
