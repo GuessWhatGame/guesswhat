@@ -100,7 +100,7 @@ class Object:
             self.crop_loader = crop_loader.preload(id)
 
     def get_crop(self, **kwarg):
-        return self.crop_loader.get_image(self.id, kwarg)
+        return self.crop_loader.get_image(self.id, **kwarg)
 
 
 

@@ -22,19 +22,20 @@ from guesswhat.data_provider.oracle_batchifier import OracleBatchifier
 
 parser = argparse.ArgumentParser('Feature extractor! ')
 
-parser.add_argument("-image_dir", type=str, help="Input Image folder")
-parser.add_argument("-data_dir", type=str, help="Dataset folder")
+parser.add_argument("-image_dir", type=str, required=True, help="Input Image folder")
+parser.add_argument("-data_dir", type=str, required=True,help="Dataset folder")
 parser.add_argument("-set_type", type=list, default=["valid", "train", "test"], help='Select the dataset to dump')
 
-parser.add_argument("-data_out", type=str, help="Output folder")
+parser.add_argument("-data_out", type=str, required=True, help="Output folder")
 
 parser.add_argument("-network", type=str, choices=["resnet", "vgg"], help="Use resnet/vgg network")
-parser.add_argument("-ckpt", type=str, help="Path for network checkpoint: ")
+parser.add_argument("-ckpt", type=str, required=True, help="Path for network checkpoint: ")
 parser.add_argument("-feature_name", type=str, default="", help="Pick the name of the network features default=(fc8 - block4)")
 
 parser.add_argument("-mode", type=str, choices=["img", "crop"], help="Select to either dump the img/crop feature")
 parser.add_argument("-subtract_mean", type=bool, default=True, help="Preprocess the image by substracting the mean")
 parser.add_argument("-img_size", type=int, default=224, help="image size (pixels)")
+parser.add_argument("-crop_scale", type=float, default=1.1, help="crop scale around the bbox")
 parser.add_argument("-batch_size", type=int, default=64, help="Batch size to extract features")
 
 parser.add_argument("-gpu_ratio", type=float, default=1., help="How many GPU ram is required? (ratio)")
@@ -46,11 +47,32 @@ args = parser.parse_args()
 
 
 # define image
-images = tf.placeholder(tf.float32, [None, args.img_size, args.img_size, 3], name='images')
 if args.subtract_mean:
     channel_mean = np.array([123.68, 116.779, 103.939])
 else:
     channel_mean = None
+
+
+# define the image loader (raw vs crop)
+if args.mode == "img":
+    images = tf.placeholder(tf.float32, [None, args.img_size, args.img_size, 3], name='image')
+    source = 'image'
+    image_loader = RawImageLoader(args.image_dir,
+                                height=args.img_size,
+                                width=args.img_size,
+                                channel=channel_mean)
+    crop_loader=None
+elif args.mode == "crop":
+    images = tf.placeholder(tf.float32, [None, args.img_size, args.img_size, 3], name='crop')
+    source = 'crop'
+    image_loader = None
+    crop_loader = RawCropLoader(args.image_dir,
+                                  height=args.img_size,
+                                  width=args.img_size,
+                                  scale=args.crop_scale,
+                                  channel=channel_mean)
+else:
+    assert False, "Invalid mode: {}".format(args.mode)
 
 
 # Define the output folder
@@ -86,19 +108,6 @@ assert feature_name in end_points, \
         .format({feature_name}, end_points.keys())
 
 
-# define the image loader (raw vs crop)
-if args.mode == "img":
-    image_loader = RawImageLoader(args.image_dir,
-                                height=args.img_size,
-                                width=args.img_size,
-                                channel=channel_mean)
-elif args.mode == "crop":
-    image_loader = RawCropLoader(args.image_dir,
-                                  height=args.img_size,
-                                  width=args.img_size,
-                                  channel=channel_mean)
-else:
-    assert False, "Invalid mode: {}".format(args.mode)
 
 
 # CPU/GPU option
@@ -113,15 +122,15 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
     for one_set in args.set_type:
 
         print("Load dataset -> set: {}".format(one_set))
-        dataset = OracleDataset.load(args.data_dir, one_set, image_loader)
-        batchifier = OracleBatchifier(tokenizer=None, sources=["image"])
+        dataset = OracleDataset.load(args.data_dir, one_set, image_loader=image_loader, crop_loader=crop_loader)
+        batchifier = OracleBatchifier(tokenizer=None, sources=[source])
         iterator = Iterator(dataset,
                             batch_size=args.batch_size,
                             pool=cpu_pool,
                             batchifier=batchifier)
 
         for batch in tqdm(iterator):
-            feat = sess.run(end_points[feature_name], feed_dict={images: numpy.array(batch['images'])})
+            feat = sess.run(end_points[feature_name], feed_dict={images: numpy.array(batch[source])})
             for f, game in zip(feat, batch["raw"]):
                 f = f.squeeze()
 
@@ -134,7 +143,7 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
                 if args.network == "resnet":
                     np.savez_compressed(os.path.join(out_dir, "{}.npz".format(id)), x="features")
                 else:
-                    features[game.picture.id] = f
+                    features[id] = f
 
 if args.network == "vgg":
     print("Dump file...")

@@ -29,7 +29,8 @@
 
     "crop": {
       "image_input": "features",
-      "dim": [1000]
+      "dim": [1000],
+      "scale" : 1.1
     }
 
   },

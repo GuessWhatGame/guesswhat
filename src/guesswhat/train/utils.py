@@ -45,6 +45,7 @@ def get_img_loader(config, image_dir, is_crop=False):
             loader = RawCropLoader(image_dir,
                                     height=config["dim"][0],
                                     width=config["dim"][1],
+                                    scale=config["scale"],
                                     channel=config.get("channel", None),
                                     extension=config.get("extension", "jpg"))
         else:
