@@ -33,6 +33,7 @@ if __name__ == '__main__':
     parser.add_argument("-data_dir", type=str, help="Directory with data")
     parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
     parser.add_argument("-config", type=str, help='Config file')
+    parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
     parser.add_argument("-image_dir", type=str, help='Directory with images')
     parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
     parser.add_argument("-continue_exp", type=bool, default=False, help="Continue previously started experiment?")
@@ -60,7 +61,7 @@ if __name__ == '__main__':
 
     # Load dictionary
     logger.info('Loading dictionary..')
-    tokenizer = GWTokenizer(os.path.join(args.data_dir, 'dict.json'))
+    tokenizer = GWTokenizer(os.path.join(args.data_dir, args.dict_file))
 
     # Build Network
     logger.info('Building network..')

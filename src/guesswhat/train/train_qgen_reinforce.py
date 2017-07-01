@@ -32,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
     parser.add_argument("-image_dir", type=str, help='Directory with images')
     parser.add_argument("-config", type=str, help='Config file')
+    parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
 
     parser.add_argument("-networks_dir", type=str, help="Directory with pretrained networks")
     parser.add_argument("-oracle_identifier", type=str, default='5297505520ab25d51eabb5e652843380', help='Oracle identifier')  # Use checkpoint id instead?
@@ -72,7 +73,7 @@ if __name__ == '__main__':
 
     # Load dictionary
     logger.info('Loading dictionary..')
-    tokenizer = GWTokenizer(os.path.join(args.data_dir, 'dict.json'))
+    tokenizer = GWTokenizer(os.path.join(args.data_dir, args.dict_file))
 
     ###############################
     #  LOAD NETWORKS
