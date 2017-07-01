@@ -155,7 +155,7 @@ export PYTHONPATH=src
 array=( img crop )
 for mode in "${array[@]}"; do
    python src/guesswhat/preprocess_data/extract_img_features.py \
-     -image_dir data/img/plain \
+     -image_dir data/img/raw \
      -data_dir data \
      -data_out data \
      -network vgg \
