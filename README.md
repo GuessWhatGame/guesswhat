@@ -137,7 +137,7 @@ Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained
 
 To launch the experiments in the local directory, you first have to set the pyhton path:
 ```
-export PYTHONPATH=src;${PYTHONPATH} 
+export PYTHONPATH=src:${PYTHONPATH} 
 ```
 Note that you can also directly execute the experiments in the source folder.
 
