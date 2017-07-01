@@ -151,6 +151,6 @@ if args.network == "vgg":
     if not os.path.isdir(out_dir):
         os.makedirs(out_dir)
     
-    pickle_dump(features, os.path.join(out_dir, feature_name + ".pkl"))
+    pickle_dump(features, out_dir)
 
 print("Done!")
