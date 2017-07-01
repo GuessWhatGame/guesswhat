@@ -152,7 +152,7 @@ First, one need to download the vgg pretrained network provided by [slim-tensorf
 
 ```
 wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz -P data/
-tar zxvf vgg_16_2016_08_28.tar.gz 
+tar zxvf data/vgg_16_2016_08_28.tar.gz -C data/
 ```
 
 GuessWhat?! requires to both computes the image features from the full picture 
