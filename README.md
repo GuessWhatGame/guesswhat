@@ -172,9 +172,7 @@ Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please fo
 To create the GuessWhat?! dictionary, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/create_dico.py .
 
 ```
-PYTHONPATH=src; python src/guesswhat/preprocess_data/create_dico.py \
-  -dataset_path data
-  -dico_path data/dico.json
+PYTHONPATH=src; python src/guesswhat/preprocess_data/create_dictionary.py -dataset_path data  
 ```
 
 
