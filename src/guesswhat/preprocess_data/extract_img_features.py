@@ -147,10 +147,6 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
 
 if args.network == "vgg":
     print("Dump file...")
-    
-    if not os.path.isdir(out_dir):
-        os.makedirs(out_dir)
-    
     pickle_dump(features, out_dir)
 
 print("Done!")
