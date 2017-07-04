@@ -6,7 +6,7 @@
     "obj_mlp_units": 512,
     "dialog_emb_dim": 512,
     "spat_dim": 8,
-    "no_categories": 90,
+    "no_categories": 90
   },
 
   "optimizer": {
