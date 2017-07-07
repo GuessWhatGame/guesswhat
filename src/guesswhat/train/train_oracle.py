@@ -50,9 +50,9 @@ if __name__ == '__main__':
     logger.info('Loading images..')
     image_loader, crop_loader = None, None
     if config['inputs'].get('image', False):
-        image_loader = get_img_loader(config['image'], args.image_dir)
+        image_loader = get_img_loader(config['model']['image'], args.image_dir)
     if config['inputs'].get('crop', False):
-        crop_loader = get_img_loader(config['crop'], args.crop_dir, is_crop=True)
+        crop_loader = get_img_loader(config['model']['crop'], args.crop_dir, is_crop=True)
 
     # Load data
     logger.info('Loading data..')
