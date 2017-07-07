@@ -129,7 +129,7 @@ class Dataset(AbstractDataset):
 
                 games.append(g)
 
-                if len(games) > 200: break
+                # if len(games) > 200: break
 
         super(Dataset, self).__init__(games)
 
