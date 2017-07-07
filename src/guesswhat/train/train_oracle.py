@@ -45,13 +45,14 @@ if __name__ == '__main__':
     ###############################
     #  LOAD DATA
     #############################
-
     # Load image
-    logger.info('Loading images..')
     image_loader, crop_loader = None, None
     if config['inputs'].get('image', False):
+        logger.info('Loading images..')
         image_loader = get_img_loader(config['model']['image'], args.image_dir)
+
     if config['inputs'].get('crop', False):
+        logger.info('Loading crops..')
         crop_loader = get_img_loader(config['model']['crop'], args.crop_dir, is_crop=True)
 
     # Load data
@@ -100,7 +101,7 @@ if __name__ == '__main__':
 
         # create training tools
         evaluator = Evaluator(sources, network.scope_name)
-        batchifier = OracleBatchifier(tokenizer, sources, status=config['status'], **config['model']['crop'])
+        batchifier = OracleBatchifier(tokenizer, sources, status=config['status'])
 
         for t in range(start_epoch, no_epoch):
             logger.info('Epoch {}..'.format(t + 1))
