@@ -67,8 +67,8 @@ class QuestionerBatchifier(AbstractBatchifier):
                 category = obj.category_id
 
                 if obj.id == game.object_id:
-                    batch['targets_category'].append(spatial)
-                    batch['targets_spatial'].append(category)
+                    batch['targets_category'].append(category)
+                    batch['targets_spatial'].append(spatial)
                     batch['targets_index'].append(index)
 
                 obj_spats.append(spatial)
