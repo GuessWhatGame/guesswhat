@@ -3,7 +3,7 @@
     "question": true,
     "category": true,
     "spatial": true,
-    "crop": true,
+    "crop": false,
     "image": false
   },
 

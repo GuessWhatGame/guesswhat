@@ -7,7 +7,7 @@ from generic.tf_utils.abstract_network import AbstractNetwork
 
 class OracleNetwork(AbstractNetwork):
 
-    def __init__(self, config, num_words, log=print, device='', reuse=False):
+    def __init__(self, config, num_words, device='', reuse=False):
         AbstractNetwork.__init__(self, "oracle", device=device)
 
         with tf.variable_scope(self.scope_name, reuse=reuse):
@@ -38,13 +38,13 @@ class OracleNetwork(AbstractNetwork):
                                               int(config['model']['category']["embedding_dim"]),
                                               scope="cat_embedding")
                 embeddings.append(cat_emb)
-                log("Input: Category")
+                print("Input: Category")
 
             # SPATIAL
             if config['inputs']['spatial']:
                 self._spatial = tf.placeholder(tf.float32, [self.batch_size, 8], name='spatial')
                 embeddings.append(self._spatial)
-                log("Input: Spatial")
+                print("Input: Spatial")
 
 
             # IMAGE
@@ -57,7 +57,7 @@ class OracleNetwork(AbstractNetwork):
                     self.image_out = attention.attention_factory(self._image, lstm_states, config["image"]["attention"])
 
                 embeddings.append(self.image_out)
-                log("Input: Image")
+                print("Input: Image")
 
 
             # CROP
@@ -70,7 +70,7 @@ class OracleNetwork(AbstractNetwork):
                     self.crop_out = attention.attention_factory(self._crop, lstm_states, config['crop']["attention"])
 
                 embeddings.append(self.crop_out)
-                log("Input: Crop")
+                print("Input: Crop")
 
 
             # Compute the final embedding

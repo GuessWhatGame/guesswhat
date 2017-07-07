@@ -192,8 +192,8 @@ Once the config file is set, you can launch the training step:
 ```
 python src/guesswhat/train/train_oracle.py \
    -data_dir data \
-   -image_dir data/vgg_img \
-   -crop_dir data/vgg_crop \
+   -image_dir data/gw_img_vgg_fc8_224 \
+   -crop_dir data/gw_crop_vgg_fc8_224 \
    -config config/oracle/config.json \
    -exp_dir out/oracle \
    -no_thread 2 
