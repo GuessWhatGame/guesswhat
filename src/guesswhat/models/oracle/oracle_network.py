@@ -49,12 +49,12 @@ class OracleNetwork(AbstractNetwork):
 
             # IMAGE
             if config['inputs']['image']:
-                self._image = tf.placeholder(tf.float32, [self.batch_size] + config['crop']["dim"], name='image')
+                self._image = tf.placeholder(tf.float32, [self.batch_size] + config['model']['image']["dim"], name='image')
 
-                if len(config["image"]["dim"]) == 1:
+                if len(config['model']["image"]["dim"]) == 1:
                     self.image_out = self._image
                 else:
-                    self.image_out = attention.attention_factory(self._image, lstm_states, config["image"]["attention"])
+                    self.image_out = attention.attention_factory(self._image, lstm_states, config['model']["image"]["attention"])
 
                 embeddings.append(self.image_out)
                 print("Input: Image")
@@ -62,12 +62,12 @@ class OracleNetwork(AbstractNetwork):
 
             # CROP
             if config['inputs']['crop']:
-                self._crop = tf.placeholder(tf.float32, [self.batch_size] + config['crop']["dim"], name='crop')
+                self._crop = tf.placeholder(tf.float32, [self.batch_size] + config['model']['crop']["dim"], name='crop')
 
-                if len(config["crop"]["dim"]) == 1:
+                if len(config['model']["crop"]["dim"]) == 1:
                     self.crop_out = self._crop
                 else:
-                    self.crop_out = attention.attention_factory(self._crop, lstm_states, config['crop']["attention"])
+                    self.crop_out = attention.attention_factory(self._crop, lstm_states, config['model']['crop']["attention"])
 
                 embeddings.append(self.crop_out)
                 print("Input: Crop")
