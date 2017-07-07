@@ -76,8 +76,8 @@ else:
 
 
 # Define the output folder
-out_file = "gw_{network}_{feature_name}_{size}".format(
-    network=args.network, feature_name=args.feature_name, size=args.img_size)
+out_file = "gw_{mode}_{network}_{feature_name}_{size}".format(
+    mode=args.mode, network=args.network, feature_name=args.feature_name, size=args.img_size)
 
 
 print("Create networks...")
