@@ -273,24 +273,26 @@ python src/guesswhat/train/train_qgen_reinforce.py
 ```
 
 
-Detailled scores (with 5 questions max):
-New Images:
+Detailled scores:
+
 Cross-entropy - Sampling: 39.2%
 Cross-entropy - Greedy 40.8%
 Cross-entropy - Beam: 44.6%
 
-Reinforce - Sampling: 56.5
-Reinforce - Greedy 58.4
-Reinforce - Beam: 58.4
 
-New Objects:
-Cross-entropy - Sampling: 41.6% 
-Cross-entropy - Greedy: 43.5% 
-Cross-entropy - Beam: 47.1% 
+| New Images| Cross-entropy  | Reinforce |
+| --------  |:-----:|:-----:|
+| Sampling   | 39.2% | 56.5 % |
+| Greedy     | 40.8% | 58.4 % |
+| BeamSearch | 44.6%| 58.4 % |
 
-Reinforce - Sampling: 58.5%
-Reinforce - Greedy: 60.3%
-Reinforce - Beam: 60.2%
+
+| New Objects| Cross-entropy  | Reinforce |
+| --------  |:-----:|:-----:|
+| Sampling   | 41.6%  | 58.5% |
+| Greedy     | 43.5%  | 60.3% |
+| BeamSearch | 47.1% | 60.2% |
+
 
 ## FAQ
 
