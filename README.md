@@ -8,6 +8,8 @@ The code was equally developed bu Florian Strub (University of Lille) and Harm d
 
 The project is part of the CHISTERA - IGLU Project.
 
+WARNING: After refactoring the code, we fixed a bug in the codebase (last generated question was ignored). Thus, we manage to greatly increase the final score after training the QGen with RL. A new version of the RL paper should be updated on arxiv by end of september with more figures and additional analysis.      
+
 #### Summary:
 
 * [Introduction](#introduction)
