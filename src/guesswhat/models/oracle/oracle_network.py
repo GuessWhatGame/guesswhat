@@ -1,8 +1,7 @@
 import tensorflow as tf
 
 from generic.tf_models import rnn, utils, attention
-
-from generic.tf_utils.abstract_network import AbstractNetwork
+from tf_models.abstract_network import AbstractNetwork
 
 
 class OracleNetwork(AbstractNetwork):
