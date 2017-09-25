@@ -8,6 +8,7 @@ import tensorflow as tf
 from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
+from generic.data_provider.image_loader import get_img_loader
 
 from guesswhat.models.oracle.oracle_network import OracleNetwork
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
@@ -21,7 +22,7 @@ from guesswhat.data_provider.looper_batchifier import LooperBatchifier
 from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from generic.utils.config import load_config, get_config_from_xp
 
-from guesswhat.train.utils import get_img_loader, test_model
+from guesswhat.train.utils import test_model
 
 
 if __name__ == '__main__':
