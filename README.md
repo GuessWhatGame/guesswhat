@@ -1,12 +1,14 @@
 # Guesswhat?! models
 
 This repo aim at reproducing the results from the series of GuessWhat?! papers, namely:
-- GuessWhat?! Visual object discovery through multi-modal dialogue - https://arxiv.org/abs/1611.08481
-- End-to-end optimization of goal-driven and visually grounded dialogue systems - https://arxiv.org/abs/1703.05423
+- GuessWhat?! Visual object discovery through multi-modal dialogue [1] https://arxiv.org/abs/1611.08481
+- End-to-end optimization of goal-driven and visually grounded dialogue systems [2] - https://arxiv.org/abs/1703.05423
 
 The code was equally developed bu Florian Strub (University of Lille) and Harm de Vries (University of Montreal)
 
 The project is part of the CHISTERA - IGLU Project.
+
+WARNING: After refactoring the code, we fixed a bug in the codebase (last generated question was ignored). Thus, we manage to greatly increase the final score reported in [1]. A new version of the RL paper should be updated on arxiv by end of september with more figures and additional analysis. Please report the score provided on the this page in the meantime, we apologize for the inconvenience.      
 
 #### Summary:
 
@@ -270,13 +272,27 @@ python src/guesswhat/train/train_qgen_reinforce.py
     -no_thread 2
 ```
 
-We obtain the following scores (with +/- 0.3%)
 
-| Set       | Cross-entropy   | Reinforce |
-| --------  |:-----:| -----:|
-| Train (new object)    | 39.0% | 58.5% |
-| Valid (new images)    | 41.8% | 57.6% |
-| Test  (new images)    | 39.8% | 56.4% |
+Detailled scores:
+
+Cross-entropy - Sampling: 39.2%
+Cross-entropy - Greedy 40.8%
+Cross-entropy - Beam: 44.6%
+
+
+| New Images| Cross-entropy  | Reinforce |
+| --------  |:-----:|:-----:|
+| Sampling   | 39.2% | 56.5 % |
+| Greedy     | 40.8% | 58.4 % |
+| BeamSearch | 44.6%| 58.4 % |
+
+
+| New Objects| Cross-entropy  | Reinforce |
+| --------  |:-----:|:-----:|
+| Sampling   | 41.6%  | 58.5% |
+| Greedy     | 43.5%  | 60.3% |
+| BeamSearch | 47.1% | 60.2% |
+
 
 ## FAQ
 
