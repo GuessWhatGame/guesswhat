@@ -9,16 +9,17 @@ import tensorflow as tf
 from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
+from generic.tf_utils.ckpt_loader import load_checkpoint
+from generic.utils.config import load_config
+from generic.data_provider.image_loader import get_img_loader
 
 from guesswhat.data_provider.guesswhat_dataset import Dataset
 from guesswhat.data_provider.questioner_batchifier import QuestionerBatchifier
 from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
-from generic.utils.config import load_config
-
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
 
 
-from guesswhat.train.utils import get_img_loader, load_checkpoint
+
 
 
 
