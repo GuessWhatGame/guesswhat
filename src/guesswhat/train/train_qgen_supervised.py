@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import pickle
 from multiprocessing import Pool
 
 import tensorflow as tf
@@ -11,6 +10,7 @@ from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
 from generic.tf_utils.ckpt_loader import load_checkpoint
 from generic.utils.config import load_config
+from generic.utils.file_handlers import pickle_dump
 from generic.data_provider.image_loader import get_img_loader
 
 from guesswhat.data_provider.guesswhat_dataset import Dataset
@@ -70,7 +70,8 @@ if __name__ == '__main__':
 
     # Build Optimizer
     logger.info('Building optimizer..')
-    optimizer, outputs = create_optimizer(network, network.ml_loss, config)
+    optimizer, loss = create_optimizer(network, network.ml_loss, config)
+    outputs = [loss]
 
     ###############################
     #  START TRAINING
@@ -126,7 +127,7 @@ if __name__ == '__main__':
                 saver.save(sess, save_path.format('params.ckpt'))
                 logger.info("Guesser checkpoint saved...")
 
-            pickle.dump({'epoch': t}, open(save_path.format('status.pkl'), 'wb'))
+                pickle_dump({'epoch': t}, save_path.format('status.pkl'))
 
         # Load early stopping
         saver.restore(sess, save_path.format('params.ckpt'))

@@ -115,6 +115,7 @@ if __name__ == '__main__':
 
     optimizer = [pg_optimize, baseline_optimize]
 
+
     ###############################
     #  START TRAINING
     #############################
