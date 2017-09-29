@@ -1,15 +1,15 @@
 import tensorflow as tf
 
-from generic.tf_models import rnn, utils, attention
-from tf_models.abstract_network import AbstractNetwork
-
+from generic.tf_models import rnn, utils
+from generic.tf_models.abstract_network import AbstractNetwork
+from generic.tf_models.image_feature import get_image_features
 
 class OracleNetwork(AbstractNetwork):
 
     def __init__(self, config, num_words, device='', reuse=False):
         AbstractNetwork.__init__(self, "oracle", device=device)
 
-        with tf.variable_scope(self.scope_name, reuse=reuse):
+        with tf.variable_scope(self.scope_name, reuse=reuse) as scope:
             embeddings = []
             self.batch_size = None
 
@@ -49,24 +49,24 @@ class OracleNetwork(AbstractNetwork):
             # IMAGE
             if config['inputs']['image']:
                 self._image = tf.placeholder(tf.float32, [self.batch_size] + config['model']['image']["dim"], name='image')
-
-                if len(config['model']["image"]["dim"]) == 1:
-                    self.image_out = self._image
-                else:
-                    self.image_out = attention.attention_factory(self._image, lstm_states, config['model']["image"]["attention"])
-
+                self.image_out = get_image_features(
+                    image=self._image, question=lstm_states,
+                    is_training=self._is_training,
+                    scope_name=scope.name,
+                    config=config['inputs']['image']
+                )
                 embeddings.append(self.image_out)
                 print("Input: Image")
-
 
             # CROP
             if config['inputs']['crop']:
                 self._crop = tf.placeholder(tf.float32, [self.batch_size] + config['model']['crop']["dim"], name='crop')
-
-                if len(config['model']["crop"]["dim"]) == 1:
-                    self.crop_out = self._crop
-                else:
-                    self.crop_out = attention.attention_factory(self._crop, lstm_states, config['model']['crop']["attention"])
+                self.crop_out = get_image_features(
+                    image=self._crop, question=lstm_states,
+                    is_training=self._is_training,
+                    scope_name=scope.name,
+                    config=config['inputs']['crop']
+                )
 
                 embeddings.append(self.crop_out)
                 print("Input: Crop")

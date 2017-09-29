@@ -1,3 +1,6 @@
 [submodule "src/generic"]
 	path = src/generic
 	url = https://github.com/GuessWhatGame/generic
+[submodule "src/conditional_batch_norm"]
+	path = src/conditional_batch_norm
+	url = https://github.com/GuessWhatGame/conditional_batch_norm
