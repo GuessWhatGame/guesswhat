@@ -89,10 +89,9 @@ class OracleNetwork(AbstractNetwork):
             self.loss = tf.reduce_mean(utils.cross_entropy(self.pred, self._answer))
             self.error = tf.reduce_mean(utils.error(self.pred, self._answer))
 
-
             print('Model... Oracle build!')
 
     def get_outputs(self):
-        return [self.loss, self.error]
+        return self.loss
 
 

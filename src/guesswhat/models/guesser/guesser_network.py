@@ -79,7 +79,7 @@ class GuesserNetwork(AbstractNetwork):
             self.error = tf.reduce_mean(utils.error(self.softmax, self.targets))
 
     def get_outputs(self):
-        return [self.loss, self.error]
+        return self.loss
 
 
 

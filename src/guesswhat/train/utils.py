@@ -29,7 +29,7 @@ def test_oracle(sess, testset, tokenizer, oracle, cpu_pool, batch_size, logger):
     oracle_iterator = Iterator(oracle_dataset, pool=cpu_pool,
                              batch_size=batch_size,
                              batchifier=oracle_batchifier)
-    [oracle_loss, oracle_error] = oracle_evaluator.process(sess, oracle_iterator, oracle.get_outputs())
+    [oracle_loss, oracle_error] = oracle_evaluator.process(sess, oracle_iterator, [oracle.loss, oracle.error])
 
     logger.info("Oracle test loss: {}".format(oracle_loss))
     logger.info("Oracle test error: {}".format(oracle_error))
@@ -42,7 +42,7 @@ def test_guesser(sess, testset, tokenizer, guesser, cpu_pool, batch_size, logger
     guesser_iterator = Iterator(testset, pool=cpu_pool,
                              batch_size=batch_size,
                              batchifier=guesser_batchifier)
-    [guesser_loss, guesser_error] = guesser_evaluator.process(sess, guesser_iterator, guesser.get_outputs())
+    [guesser_loss, guesser_error] = guesser_evaluator.process(sess, guesser_iterator, [guesser.loss, guesser.error])
     logger.info("Guesser test loss: {}".format(guesser_loss))
     logger.info("Guesser test error: {}".format(guesser_error))
 
