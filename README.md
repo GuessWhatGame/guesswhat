@@ -1,6 +1,6 @@
 # Guesswhat?! models
 
-This repo aim at reproducing the results from the series of GuessWhat?! papers, namely:
+This repo aims at reproducing the results from the series of GuessWhat?! papers, namely:
 - GuessWhat?! Visual object discovery through multi-modal dialogue [1] https://arxiv.org/abs/1611.08481
 - End-to-end optimization of goal-driven and visually grounded dialogue systems [2] - https://arxiv.org/abs/1703.05423
 
@@ -77,12 +77,6 @@ guesswhat
 |   └── img       # contains the coco img
 |        └── raw
 |
-├── vqa            # vqa package dir
-|   ├── datasets   # datasets classes & functions dir (vqa, coco, images, features, etc.)
-|   ├── external   # submodules dir (VQA, skip-thoughts.torch)
-|   ├── lib        # misc classes & func dir (engine, logger, dataloader, etc.)
-|   └── models     # models classes & func dir (att, fusion, notatt, seq2vec)
-|
 └── src            # source files
 ```
 
@@ -145,7 +139,7 @@ Note that you can also directly execute the experiments in the source folder.
 
 ### Process Data
 
-Before starting the training, one needs to compute the image features and the word dictionnary
+Before starting the training, one needs to compute the image features and the word dictionary
 
 #### Extract image features
 Following the original papers, we are going to extract fc8 features from the coco images by using a VGG-16 network. 
@@ -175,7 +169,7 @@ done
 
 Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please follow the script documentation for more advanced setting. 
 
-#### Create dictionnary
+#### Create dictionary
 
 To create the GuessWhat?! dictionary, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/create_dico.py .
 
