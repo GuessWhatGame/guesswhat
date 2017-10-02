@@ -24,8 +24,6 @@ class GuesserNetwork(AbstractNetwork):
             # Targets
             self.targets = tf.placeholder(tf.int32, [mini_batch_size], name="targets_index")
 
-
-
             self.object_cats_emb = utils.get_embedding(
                 self.obj_cats,
                 config['no_categories'] + 1,

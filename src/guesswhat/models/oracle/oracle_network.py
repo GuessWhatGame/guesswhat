@@ -1,13 +1,13 @@
 import tensorflow as tf
 
 from generic.tf_models import rnn, utils
-from generic.tf_models.abstract_network import AbstractNetwork
+from generic.tf_models.abstract_network import ResnetModel
 from generic.tf_models.image_feature import get_image_features
 
-class OracleNetwork(AbstractNetwork):
+class OracleNetwork(ResnetModel):
 
     def __init__(self, config, num_words, device='', reuse=False):
-        AbstractNetwork.__init__(self, "oracle", device=device)
+        ResnetModel.__init__(self, "oracle", device=device)
 
         with tf.variable_scope(self.scope_name, reuse=reuse) as scope:
             embeddings = []
@@ -53,7 +53,7 @@ class OracleNetwork(AbstractNetwork):
                     image=self._image, question=lstm_states,
                     is_training=self._is_training,
                     scope_name=scope.name,
-                    config=config['inputs']['image']
+                    config=config['model']['image']
                 )
                 embeddings.append(self.image_out)
                 print("Input: Image")
@@ -65,7 +65,7 @@ class OracleNetwork(AbstractNetwork):
                     image=self._crop, question=lstm_states,
                     is_training=self._is_training,
                     scope_name=scope.name,
-                    config=config['inputs']['crop']
+                    config=config["model"]['crop']
                 )
 
                 embeddings.append(self.crop_out)

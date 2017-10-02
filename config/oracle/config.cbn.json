@@ -3,7 +3,7 @@
     "question": true,
     "category": true,
     "spatial": true,
-    "crop": false,
+    "crop": true,
     "image": false
   },
 
@@ -28,9 +28,27 @@
     },
 
     "crop": {
-      "image_input": "fc8",
-      "dim": [1000],
-      "scale" : 1.1
+
+      "image_input": "raw",
+
+      "dim": [224, 224, 3],
+      "scale" : 1.1,
+      "normalize": true,
+
+      "resnet_version": 50,
+      "finetune" : [],
+
+      "attention" : {
+        "mode": "glimpse",
+        "no_attention_mlp": 256,
+        "no_glimpses": 2
+      },
+
+      "cbn": {
+        "use_cbn": true,
+        "cbn_embedding_size": 512,
+        "excluded_scope_names": ["resnet_v1_50/conv1", "shortcut"]
+      }
     }
 
   },
