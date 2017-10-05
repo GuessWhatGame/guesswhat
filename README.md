@@ -8,7 +8,7 @@ The code was equally developed bu Florian Strub (University of Lille) and Harm d
 
 The project is part of the CHISTERA - IGLU Project.
 
-WARNING: After refactoring the code, we fixed a bug in the codebase (last generated question was ignored). Thus, we manage to greatly increase the final score reported in [1]. A new version of the RL paper should be updated on arxiv by end of september with more figures and additional analysis. Please report the score provided on the this page in the meantime, we apologize for the inconvenience.      
+WARNING: After refactoring the code of the original paper, we fixed a bug in the codebase (the last generated question was ignored in some case). New score greatly increase the final score reported in [1] but some results analysis are now obsolete. A new version of the RL paper will be updated on arxiv with more figures and additional analysis. Please report the score provided on the this page in the meantime, we apologize for the inconvenience.      
 
 #### Summary:
 
