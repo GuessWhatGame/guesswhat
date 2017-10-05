@@ -19,14 +19,14 @@ def lazy_property(fn):
 
 class Game:
 
-    def __init__(self, id, object_id, picture, objects, qas, status, image_loader, crop_loader):
+    def __init__(self, id, object_id, picture, objects, qas, status, image_builder, crop_builder):
         self.dialogue_id = id
         self.object_id = object_id
         self.picture = Picture(picture["id"],
                                picture["width"],
                                picture["height"],
                                picture["coco_url"],
-                               image_loader=image_loader)
+                               image_builder=image_builder)
         self.objects = []
         for o in objects:
 
@@ -35,9 +35,8 @@ class Game:
                              o['category_id'],
                              Bbox(o['bbox'], picture["width"], picture["height"]),
                              o['area'],
-                             crop_loader=crop_loader if o['id'] == object_id
-                                        else None
-                             )
+                             crop_builder=crop_builder,
+                             picture_id=picture["id"])
 
             self.objects.append(new_obj)
             if o['id'] == object_id:
@@ -50,23 +49,19 @@ class Game:
 
 
 class Picture:
-    def __init__(self, id, width, height, url, image_loader=None):
+    def __init__(self, id, width, height, url, image_builder=None):
         self.id = id
         self.width = width
         self.height = height
         self.url = url
-        self.path = None
-        self.fc8 = None
 
-        self.image_loader = image_loader
-        if image_loader is not None:
-            self.image_loader = image_loader.preload(id)
+        if image_builder is not None:
+            filename = "{}.jpg".format(id)
+            self.image_loader = image_builder.build(id, filename=filename, optional=False)
 
     def get_image(self, **kwargs):
-        if self.image_loader is not None:
-            return self.image_loader.get_image(self.id)
-        else:
-            return None
+        assert self.image_loader is not None, "Invalid image loader"
+        return self.image_loader.get_image(**kwargs)
 
 
 
@@ -91,25 +86,27 @@ class Bbox:
 
 
 class Object:
-    def __init__(self, id, category, category_id, bbox, area, crop_loader):
+    def __init__(self, id, category, category_id, bbox, area, crop_builder, picture_id,**kwargs):
         self.id = id
         self.category = category
         self.category_id = category_id
         self.bbox = bbox
         self.area = area
 
-        if crop_loader is not None:
-            self.crop_loader = crop_loader.preload(id)
+        if crop_builder is not None:
+            filename = "{}.jpg".format(picture_id)
+            self.crop_loader = crop_builder.build(id, filename=filename, bbox=bbox)
 
     def get_crop(self, **kwargs):
-        return self.crop_loader.get_image(self.id, **kwargs)
+        assert self.crop_loader is not None, "Invalid crop loader"
+        return self.crop_loader.get_image(**kwargs)
 
 
 
 
 class Dataset(AbstractDataset):
     """Loads the dataset."""
-    def __init__(self, folder, which_set, image_loader=None, crop_loader=None):
+    def __init__(self, folder, which_set, image_builder=None, crop_builder=None):
         file = '{}/guesswhat.{}.jsonl.gz'.format(folder, which_set)
         games = []
 
@@ -124,8 +121,8 @@ class Dataset(AbstractDataset):
                          qas=game['qas'],
                          picture=game['image'],
                          status=game['status'],
-                         image_loader=image_loader,
-                         crop_loader=crop_loader)
+                         image_builder=image_builder,
+                         crop_builder=crop_builder)
 
                 games.append(g)
 

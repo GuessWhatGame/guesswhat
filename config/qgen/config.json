@@ -6,7 +6,7 @@
     "picture_embedding_size": 512,
 
     "image": {
-      "image_input": "features",
+      "image_input": "fc8",
       "dim": [1000]
     }
 

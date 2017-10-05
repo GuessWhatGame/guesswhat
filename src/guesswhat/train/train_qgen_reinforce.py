@@ -8,7 +8,7 @@ import tensorflow as tf
 from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
-from generic.data_provider.image_loader import get_img_loader
+from generic.data_provider.image_loader import get_img_builder
 
 from guesswhat.models.oracle.oracle_network import OracleNetwork
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
@@ -63,8 +63,8 @@ if __name__ == '__main__':
 
     # Load image
     logger.info('Loading images..')
-    image_loader = get_img_loader(qgen_config['model']['image'], args.image_dir)
-    crop_loader = None  # get_img_loader(guesser_config['model']['crop'], args.image_dir)
+    image_loader = get_img_builder(qgen_config['model']['image'], args.image_dir)
+    crop_loader = None  # get_img_builder(guesser_config['model']['crop'], args.image_dir)
 
     # Load data
     logger.info('Loading data..')

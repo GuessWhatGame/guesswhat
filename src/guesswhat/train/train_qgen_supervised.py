@@ -11,7 +11,7 @@ from generic.tf_utils.optimizer import create_optimizer
 from generic.tf_utils.ckpt_loader import load_checkpoint
 from generic.utils.config import load_config
 from generic.utils.file_handlers import pickle_dump
-from generic.data_provider.image_loader import get_img_loader
+from generic.data_provider.image_loader import get_img_builder
 
 from guesswhat.data_provider.guesswhat_dataset import Dataset
 from guesswhat.data_provider.questioner_batchifier import QuestionerBatchifier
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
     # Load image
     logger.info('Loading images..')
-    image_loader = get_img_loader(config['model']['image'], args.image_dir)
+    image_loader = get_img_builder(config['model']['image'], args.image_dir)
     crop_loader = None  # get_img_loader(config, 'crop', args.image_dir)
 
     # Load data

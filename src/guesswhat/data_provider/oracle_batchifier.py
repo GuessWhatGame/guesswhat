@@ -52,7 +52,7 @@ class OracleBatchifier(AbstractBatchifier):
                 batch['spatial'].append(spat_feat)
 
             if 'crop' in sources:
-                batch['crop'].append(game.object.get_crop(bbox=game.object.bbox, image_id=picture.id))
+                batch['crop'].append(game.object.get_crop())
 
             if 'image' in sources:
                 batch['image'].append(picture.get_image())

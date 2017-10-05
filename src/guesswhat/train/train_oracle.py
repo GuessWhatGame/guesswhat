@@ -11,7 +11,7 @@ from generic.tf_utils.optimizer import create_optimizer
 from generic.tf_utils.ckpt_loader import load_checkpoint
 from generic.utils.config import load_config
 from generic.utils.file_handlers import pickle_dump
-from generic.data_provider.image_loader import get_img_loader
+from generic.data_provider.image_loader import get_img_builder
 
 from guesswhat.data_provider.guesswhat_dataset import OracleDataset
 from guesswhat.data_provider.oracle_batchifier import OracleBatchifier
@@ -47,20 +47,20 @@ if __name__ == '__main__':
     #  LOAD DATA
     #############################
     # Load image
-    image_loader, crop_loader = None, None
+    image_builder, crop_builder = None, None
     if config['inputs'].get('image', False):
         logger.info('Loading images..')
-        image_loader = get_img_loader(config['model']['image'], args.image_dir)
+        image_builder = get_img_builder(config['model']['image'], args.image_dir)
 
     if config['inputs'].get('crop', False):
         logger.info('Loading crops..')
-        crop_loader = get_img_loader(config['model']['crop'], args.crop_dir, is_crop=True)
+        crop_builder = get_img_builder(config['model']['crop'], args.crop_dir, is_crop=True)
 
     # Load data
     logger.info('Loading data..')
-    trainset = OracleDataset.load(args.data_dir, "train", image_loader, crop_loader)
-    validset = OracleDataset.load(args.data_dir, "valid", image_loader, crop_loader)
-    testset = OracleDataset.load(args.data_dir, "test", image_loader, crop_loader)
+    trainset = OracleDataset.load(args.data_dir, "train", image_builder, crop_builder)
+    validset = OracleDataset.load(args.data_dir, "valid", image_builder, crop_builder)
+    testset = OracleDataset.load(args.data_dir, "test", image_builder, crop_builder)
 
     # Load dictionary
     logger.info('Loading dictionary..')
