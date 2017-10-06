@@ -1,7 +1,9 @@
 import tensorflow as tf
 
-from generic.tf_models import utils, attention
-from  tf_models.abstract_network import AbstractNetwork
+from neural_toolbox import utils\
+
+from generic.tf_factory.attention_factory import get_attention
+from generic.tf_utils.abstract_network import AbstractNetwork
 
 
 class QGenNetworkLSTM(AbstractNetwork):
@@ -61,7 +63,7 @@ class QGenNetworkLSTM(AbstractNetwork):
             if len(config["image"]["dim"]) == 1:
                 self.image_out = self.images
             else:
-                self.image_out = attention.attention_factory(self.images, None, "none") #TODO: improve by using the previous lstm state?
+                self.image_out = get_attention(self.images, None, "none") #TODO: improve by using the previous lstm state?
 
 
             # Reduce the embedding size of the image

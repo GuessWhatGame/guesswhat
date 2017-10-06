@@ -4,3 +4,6 @@
 [submodule "src/conditional_batch_norm"]
 	path = src/conditional_batch_norm
 	url = https://github.com/GuessWhatGame/conditional_batch_norm
+[submodule "src/neural_toolbox"]
+	path = src/neural_toolbox
+	url = https://github.com/GuessWhatGame/neural_toolbox

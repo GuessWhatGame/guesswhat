@@ -1,6 +1,4 @@
 from nltk.tokenize import TweetTokenizer
-import re
-import os
 import json
 
 class GWTokenizer:

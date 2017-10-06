@@ -39,7 +39,7 @@
       "finetune" : [],
 
       "attention" : {
-        "mode": "glimpse",
+        "mode": "classic",
         "no_attention_mlp": 256,
         "no_glimpses": 2
       },

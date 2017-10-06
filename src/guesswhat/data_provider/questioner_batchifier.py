@@ -1,6 +1,5 @@
 import numpy as np
 import collections
-from PIL import Image
 
 from generic.data_provider.batchifier import AbstractBatchifier
 

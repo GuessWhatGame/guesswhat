@@ -1,16 +1,4 @@
 from __future__ import unicode_literals
-import collections
-import pickle
-
-
-from generic.data_provider.image_loader import *
-
-
-
-
-
-
-
 
 from guesswhat.data_provider.questioner_batchifier import QuestionerBatchifier
 from guesswhat.data_provider.oracle_batchifier import OracleBatchifier
