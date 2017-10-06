@@ -40,7 +40,7 @@ Higher-level image understanding, like spatial reasoning and language grounding,
 Our code has internal dependences called submodules. To properly clone the repository, please use the following git command:\
 
 ```
-git clone --recursive git@github.com:GuessWhatGame/guesswhat.git
+git clone --recursive https://github.com/GuessWhatGame/guesswhat.git'
 ```
 
 ### Requirements
