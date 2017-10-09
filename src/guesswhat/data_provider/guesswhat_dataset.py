@@ -142,8 +142,8 @@ class OracleDataset(AbstractDataset):
         super(OracleDataset, self).__init__(new_games)
 
     @classmethod
-    def load(cls, folder, which_set, image_loader=None, crop_loader=None):
-        return cls(Dataset(folder, which_set, image_loader, crop_loader))
+    def load(cls, folder, which_set, image_builder=None, crop_builder=None):
+        return cls(Dataset(folder, which_set, image_builder, crop_builder))
 
     def split(self, game):
         games = []

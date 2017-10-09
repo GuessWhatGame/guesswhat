@@ -66,8 +66,7 @@ class OracleNetwork(ResnetModel):
                     image=self._crop, question=lstm_states,
                     is_training=self._is_training,
                     scope_name=scope.name,
-                    config=config["model"]['crop']
-                )
+                    config=config["model"]['crop'])
 
                 embeddings.append(self.crop_out)
                 print("Input: Crop")

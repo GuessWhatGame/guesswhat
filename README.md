@@ -142,16 +142,16 @@ Note that you can also directly execute the experiments in the source folder.
 Before starting the training, one needs to compute the image features and the word dictionary
 
 #### Extract image features
-Following the original papers, we are going to extract fc8 features from the coco images by using a VGG-16 network. 
+Following the original papers, we are going to extract fc8 features from the coco images by using a VGG-16 network.
 
-First, one need to download the vgg pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/slim):
+First, one need to download the vgg pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/research/slim):
 
 ```
 wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz -P data/
 tar zxvf data/vgg_16_2016_08_28.tar.gz -C data/
 ```
 
-GuessWhat?! requires to both computes the image features from the full picture 
+GuessWhat?! requires to both computes the image features from the full picture
 To do so, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/extract_img_features.py .
 ```
 array=( img crop )
@@ -167,7 +167,7 @@ for mode in "${array[@]}"; do
 done
 ```
 
-Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please follow the script documentation for more advanced setting. 
+Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please follow the script documentation for more advanced setting.
 
 #### Create dictionary
 

@@ -12,7 +12,7 @@ import tensorflow.contrib.slim.python.slim.nets.vgg as vgg
 import tensorflow.contrib.slim.python.slim.nets.resnet_v1 as resnet_v1
 import tensorflow.contrib.slim.python.slim.nets.resnet_utils as slim_utils
 
-from guesswhat.train.utils import RawImageLoader, RawCropLoader
+from generic.data_provider.image_loader import RawImageBuilder, RawCropBuilder
 
 from generic.data_provider.iterator import Iterator
 from generic.utils.file_handlers import pickle_dump
@@ -57,16 +57,16 @@ else:
 if args.mode == "img":
     images = tf.placeholder(tf.float32, [None, args.img_size, args.img_size, 3], name='image')
     source = 'image'
-    image_loader = RawImageLoader(args.image_dir,
-                                height=args.img_size,
-                                width=args.img_size,
-                                channel=channel_mean)
-    crop_loader=None
+    image_builder = RawImageBuilder(args.image_dir,
+                                    height=args.img_size,
+                                    width=args.img_size,
+                                    channel=channel_mean)
+    crop_builder=None
 elif args.mode == "crop":
     images = tf.placeholder(tf.float32, [None, args.img_size, args.img_size, 3], name='crop')
     source = 'crop'
-    image_loader = None
-    crop_loader = RawCropLoader(args.image_dir,
+    image_builder = None
+    crop_builder = RawCropBuilder(args.image_dir,
                                   height=args.img_size,
                                   width=args.img_size,
                                   scale=args.crop_scale,
@@ -122,7 +122,7 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
     for one_set in args.set_type:
 
         print("Load dataset -> set: {}".format(one_set))
-        dataset = OracleDataset.load(args.data_dir, one_set, image_loader=image_loader, crop_loader=crop_loader)
+        dataset = OracleDataset.load(args.data_dir, one_set, image_builder=image_builder, crop_builder=crop_builder)
         batchifier = OracleBatchifier(tokenizer=None, sources=[source])
         iterator = Iterator(dataset,
                             batch_size=args.batch_size,
@@ -131,19 +131,19 @@ with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placem
 
         for batch in tqdm(iterator):
             feat = sess.run(end_points[feature_name], feed_dict={images: numpy.array(batch[source])})
-            for f, game in zip(feat, batch["raw"]):
-                f = f.squeeze()
+            for ft, game in zip(feat, batch["raw"]):
+                ft = ft.squeeze()
 
                 if args.mode == "crop":
                     id =  game.object_id
                 else:
                     id = game.picture.id
 
-
                 if args.network == "resnet":
-                    np.savez_compressed(os.path.join(out_dir, "{}.npz".format(id)), x="features")
+                    filename = os.path.join(out_dir, "{}.npz".format(id))
+                    np.savez_compressed(filename, x=ft)
                 else:
-                    features[id] = f
+                    features[id] = ft
 
 if args.network == "vgg":
     print("Dump file...")
