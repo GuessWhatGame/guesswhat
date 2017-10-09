@@ -70,8 +70,7 @@ if __name__ == '__main__':
 
     # Build Optimizer
     logger.info('Building optimizer..')
-    optimizer, loss = create_optimizer(network, network.ml_loss, config)
-    outputs = [loss]
+    optimizer, outputs = create_optimizer(network, config)
 
     ###############################
     #  START TRAINING

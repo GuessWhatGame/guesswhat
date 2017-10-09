@@ -91,7 +91,8 @@ class OracleNetwork(ResnetModel):
 
             print('Model... Oracle build!')
 
-    def get_outputs(self):
+    def get_loss(self):
         return self.loss
 
-
+    def get_accuracy(self):
+        return 1. - self.error

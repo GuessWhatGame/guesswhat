@@ -165,12 +165,11 @@ class QGenNetworkLSTM(AbstractNetwork):
                     self.loss = self.policy_gradient_loss
 
 
+    def get_loss(self):
+        return self.loss
 
-
-
-
-    def get_outputs(self):
-        return [self.loss]
+    def get_accuracy(self):
+        return self.loss
 
     def build_sampling_graph(self, config, tokenizer, max_length=12):
 

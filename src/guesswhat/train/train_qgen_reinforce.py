@@ -105,13 +105,15 @@ if __name__ == '__main__':
     pg_variables = [v for v in tf.trainable_variables() if "qgen" in v.name and 'rl_baseline' not in v.name]
     baseline_variables = [v for v in tf.trainable_variables() if "qgen" in v.name and 'rl_baseline' in v.name]
 
-    pg_optimize, _ = create_optimizer(qgen_network, qgen_network.policy_gradient_loss, loop_config,
+    pg_optimize, _ = create_optimizer(qgen_network, loop_config,
                                    var_list=pg_variables,
-                                   optim=tf.train.GradientDescentOptimizer)
-    baseline_optimize, _= create_optimizer(qgen_network, qgen_network.baseline_loss, loop_config,
-                                         var_list=baseline_variables,
-                                         optim=tf.train.GradientDescentOptimizer,
-                                         apply_update_ops=False)
+                                   optim_cst=tf.train.GradientDescentOptimizer,
+                                   loss=qgen_network.policy_gradient_loss)
+    baseline_optimize, _= create_optimizer(qgen_network, loop_config,
+                                        var_list=baseline_variables,
+                                        optim_cst=tf.train.GradientDescentOptimizer,
+                                        apply_update_ops=False,
+                                        loss=qgen_network.policy_gradient_loss)
 
     optimizer = [pg_optimize, baseline_optimize]
 

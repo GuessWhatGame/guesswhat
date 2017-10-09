@@ -77,9 +77,11 @@ class GuesserNetwork(AbstractNetwork):
             self.loss = tf.reduce_mean(utils.cross_entropy(self.softmax, self.targets))
             self.error = tf.reduce_mean(utils.error(self.softmax, self.targets))
 
-    def get_outputs(self):
+    def get_loss(self):
         return self.loss
 
+    def get_accuracy(self):
+        return 1. - self.error
 
 
 

@@ -66,8 +66,7 @@ if __name__ == '__main__':
 
     # Build Optimizer
     logger.info('Building optimizer..')
-    optimizer, loss = create_optimizer(network, network.loss, config)
-    outputs = [loss, network.error]
+    optimizer, outputs = create_optimizer(network, config)
 
     ###############################
     #  START  TRAINING
@@ -106,22 +105,22 @@ if __name__ == '__main__':
                                       batch_size=batch_size, pool=cpu_pool,
                                       batchifier=batchifier,
                                       shuffle=True)
-            train_loss, train_error = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer])
+            train_loss, train_accuracy = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer])
 
             valid_iterator = Iterator(validset, pool=cpu_pool,
                                       batch_size=batch_size*2,
                                       batchifier=batchifier,
                                       shuffle=False)
-            valid_loss, valid_error = evaluator.process(sess, valid_iterator, outputs=outputs)
+            valid_loss, valid_accuracy = evaluator.process(sess, valid_iterator, outputs=outputs)
 
             logger.info("Training loss: {}".format(train_loss))
-            logger.info("Training error: {}".format(train_error))
+            logger.info("Training accuracy: {}".format(train_accuracy))
             logger.info("Validation loss: {}".format(valid_loss))
-            logger.info("Validation error: {}".format(valid_error))
+            logger.info("Validation accuracy: {}".format(valid_accuracy))
 
-            if valid_error < best_val_err:
-                best_train_err = train_error
-                best_val_err = valid_error
+            if valid_accuracy < best_val_err:
+                best_train_err = train_accuracy
+                best_val_err = valid_accuracy
                 saver.save(sess, save_path.format('params.ckpt'))
                 logger.info("Guesser checkpoint saved...")
 
@@ -133,7 +132,7 @@ if __name__ == '__main__':
                                  batch_size=batch_size,
                                  batchifier=batchifier,
                                  shuffle=True)
-        [test_loss, test_error] = evaluator.process(sess, test_iterator, outputs)
+        [test_loss, test_accuracy] = evaluator.process(sess, test_iterator, outputs)
 
         logger.info("Testing loss: {}".format(test_loss))
-        logger.info("Testing error: {}".format(test_error))
+        logger.info("Testing accuracy: {}".format(test_accuracy))
