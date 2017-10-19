@@ -8,9 +8,10 @@ import tensorflow as tf
 from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
-from generic.tf_utils.ckpt_loader import load_checkpoint
+from generic.tf_utils.ckpt_loader import load_checkpoint, create_resnet_saver
 from generic.utils.config import load_config
 from generic.utils.file_handlers import pickle_dump
+from generic.data_provider.image_loader import get_img_builder
 
 from guesswhat.data_provider.guesswhat_dataset import Dataset
 from guesswhat.data_provider.questioner_batchifier import QuestionerBatchifier
@@ -28,7 +29,7 @@ if __name__ == '__main__':
 
     parser.add_argument("-data_dir", type=str, help="Directory with data")
     parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
-    parser.add_argument("-image_dir", type=str, help='Directory with images')
+    parser.add_argument("-img_dir", type=str, help='Directory with images')
     parser.add_argument("-config", type=str, help="Configuration file")
     parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
     parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
@@ -45,16 +46,24 @@ if __name__ == '__main__':
     #  LOAD DATA
     #############################
 
+    image_builder, crop_builder = None, None
+
     # Load image
     logger.info('Loading images..')
-    image_loader = None  # get_img_loader(config['model']['image'], args.image_dir)
-    crop_loader = None  # get_img_loader(config['model']['crop'], args.image_dir)
+    use_resnet = False
+    if 'image' in config['model']:
+        logger.info('Loading images..')
+        image_builder = get_img_builder(config['model']['image'], args.img_dir)
+        use_resnet = image_builder.is_raw_image()
+
+        assert False, "Guesser + Image is not yet available"
+
 
     # Load data
     logger.info('Loading data..')
-    trainset = Dataset(args.data_dir, "train", image_loader, crop_loader)
-    validset = Dataset(args.data_dir, "valid", image_loader, crop_loader)
-    testset = Dataset(args.data_dir, "test", image_loader, crop_loader)
+    trainset = Dataset(args.data_dir, "train", image_builder, crop_builder)
+    validset = Dataset(args.data_dir, "valid", image_builder, crop_builder)
+    testset = Dataset(args.data_dir, "test", image_builder, crop_builder)
 
     # Load dictionary
     logger.info('Loading dictionary..')
@@ -62,7 +71,7 @@ if __name__ == '__main__':
 
     # Build Network
     logger.info('Building network..')
-    network = GuesserNetwork(config["model"], num_words=tokenizer.no_words)
+    network = GuesserNetwork(config['model'], num_words=tokenizer.no_words)
 
     # Build Optimizer
     logger.info('Building optimizer..')
@@ -78,6 +87,10 @@ if __name__ == '__main__':
 
     # create a saver to store/load checkpoint
     saver = tf.train.Saver()
+
+    # Retrieve only resnet variabes
+    if use_resnet:
+        resnet_saver = create_resnet_saver([network])
 
     # CPU/GPU option
     cpu_pool = Pool(args.no_thread, maxtasksperchild=1000)

@@ -3,7 +3,7 @@
 
     "word_embedding_size": 512,
     "num_lstm_units": 1024,
-    "picture_embedding_size": 512,
+    "image_embedding_size": 512,
 
     "image": {
       "image_input": "fc8",

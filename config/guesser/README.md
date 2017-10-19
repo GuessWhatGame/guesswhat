@@ -1,6 +1,6 @@
 # Guesser config
 
-The guesser task requires to select an object within a list of objects object given a dialogue and a picture.
+The guesser task requires to select an object within a list of objects object given a dialogue and a image.
 
 The configuration file is divided into three parts:
  - Guesser model definition

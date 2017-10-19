@@ -6,11 +6,11 @@ python src/guesswhat/preprocess_data/create_dictionary.py -data_dir=/path/to/gue
 """
 import argparse
 import collections
-import gzip
 import io
 import json
 import os
 
+from guesswhat.data_provider.guesswhat_dataset import OracleDataset
 from nltk.tokenize import TweetTokenizer
 
 if __name__ == '__main__':
@@ -40,15 +40,12 @@ if __name__ == '__main__':
 
 
     print("Processing train dataset...")
-    path = os.path.join(args.data_dir, "guesswhat.train.jsonl.gz")
-    with gzip.open(path) as f:
-        for k , line in enumerate(f):
-            dialogue = json.loads(line)
-
-            for qa in dialogue['qas']:
-                tokens = tknzr.tokenize(qa['question'])
-                for tok in tokens:
-                    word2occ[tok] += 1
+    trainset = OracleDataset.load(args.data_dir, "train")
+    for game in trainset.games:
+        question = game.questions[0]
+        tokens = tknzr.tokenize(question)
+        for tok in tokens:
+            word2occ[tok] += 1
 
     print("filter words...")
     for word, occ in word2occ.items():
@@ -59,6 +56,7 @@ if __name__ == '__main__':
     print("Number of words (occ >= {}): {}".format(args.min_occ, len(word2i)))
 
     dict_path = os.path.join(args.data_dir, 'dict.json')
+    print("Dump file: {} ...".format(dict_path))
     with io.open(dict_path, 'wb') as f_out:
         data = json.dumps({'word2i': word2i}, ensure_ascii=False)
         f_out.write(data.encode('utf8', 'replace'))

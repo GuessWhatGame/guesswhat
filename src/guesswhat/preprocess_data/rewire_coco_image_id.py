@@ -29,5 +29,5 @@ for path in args.image_subdir:
         if not res:
             continue
 
-        # create symlink with id_picture
+        # create symlink with id_image
         os.symlink(name, os.path.join(args.data_out, res.group(1)))

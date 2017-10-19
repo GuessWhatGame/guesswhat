@@ -52,7 +52,8 @@ It requires the following python packages:
 pip install \
     tensorflow-gpu \
     nltk \
-    tqdm
+    tqdm \
+    image
 ```
 
 
@@ -75,6 +76,8 @@ guesswhat
 |
 ├── data          # contains the Guesshat data
 |   └── img       # contains the coco img
+|        ├── ft_vgg_img
+|        ├── ft_vgg_crop
 |        └── raw
 |
 └── src            # source files
@@ -84,7 +87,7 @@ To complete the git-clone file arhictecture, you can do:
 
 ```
 cd guesswhat
-mkdir data; mkdir data/img ; mkdir data/img/raw
+mkdir data; mkdir data/img ; mkdir data/img/raw ; mkdir data/img/ft_vgg_img ; mkdir data/img/ft_vgg_crop
 mkdir out; mkdir out/oracle ; mkdir out/guesser; mkdir out/qgen; mkdir out/looper ; 
 ```
 
@@ -151,15 +154,15 @@ wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz -P data/
 tar zxvf data/vgg_16_2016_08_28.tar.gz -C data/
 ```
 
-GuessWhat?! requires to both computes the image features from the full picture
+GuessWhat?! requires to both computes the image features from the full image
 To do so, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/extract_img_features.py .
 ```
 array=( img crop )
 for mode in "${array[@]}"; do
    python src/guesswhat/preprocess_data/extract_img_features.py \
-     -image_dir data/img/raw \
+     -img_dir data/img/raw \
      -data_dir data \
-     -data_out data \
+     -out_dir data/img/ft_vgg_$mode \
      -network vgg \
      -ckpt data/vgg_16.ckpt \
      -feature_name fc8 \
@@ -174,7 +177,7 @@ Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please fo
 To create the GuessWhat?! dictionary, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/create_dico.py .
 
 ```
-python src/guesswhat/preprocess_data/create_dictionary.py -dataset_path data  
+python src/guesswhat/preprocess_data/create_dictionary.py -data_dir data -dict_file dict.json -min_occ 3
 ```
 
 
@@ -188,8 +191,8 @@ Once the config file is set, you can launch the training step:
 ```
 python src/guesswhat/train/train_oracle.py \
    -data_dir data \
-   -image_dir data/gw_img_vgg_fc8_224 \
-   -crop_dir data/gw_crop_vgg_fc8_224 \
+   -img_dir data/img/ft_vgg_img \
+   -crop_dir data/img/ft_vgg_crop \
    -config config/oracle/config.json \
    -exp_dir out/oracle \
    -no_thread 2 
@@ -210,7 +213,7 @@ Identically, you first have to update the config/guesser/config.json
 ```
 python src/guesswhat/train/train_guesser.py \
    -data_dir data \
-   -image_dir data/vgg_img \
+   -img_dir data/ft_vgg_img \
    -config config/guesser/config.json \
    -exp_dir out/guesser \
    -no_thread 2 
@@ -230,7 +233,7 @@ Identically, you first have to update the config/guesser/config.json
 ```
 python src/guesswhat/train/train_qgen_supervised.py \
    -data_dir data \
-   -image_dir data/vgg_img \
+   -img_dir data/ft_vgg_img \
    -config config/qgen/config.json \
    -exp_dir out/qgen \
    -no_thread 2 
@@ -261,7 +264,8 @@ python src/guesswhat/train/train_qgen_reinforce.py
     -data_dir data/ \
     -exp_dir out/loop/ \
     -config config/looper/config.json \
-    -image_dir data/vgg_img \
+    -img_dir data/ft_vgg_img \
+    -crop_dir data/ft_vgg_crop \
     -networks_dir out \
     -no_thread 2
 ```

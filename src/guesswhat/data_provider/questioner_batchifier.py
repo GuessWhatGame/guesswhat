@@ -62,7 +62,7 @@ class QuestionerBatchifier(AbstractBatchifier):
             # Object embedding
             obj_spats, obj_cats = [], []
             for index, obj in enumerate(game.objects):
-                spatial = get_spatial_feat(obj.bbox, game.picture.width, game.picture.height)
+                spatial = get_spatial_feat(obj.bbox, game.image.width, game.image.height)
                 category = obj.category_id
 
                 if obj.id == game.object_id:
@@ -76,7 +76,7 @@ class QuestionerBatchifier(AbstractBatchifier):
             batch['obj_cats'].append(obj_cats)
 
             # image
-            img = game.picture.get_image()
+            img = game.image.get_image()
             if img is not None:
                 if "images" not in batch:  # initialize an empty array for better memory consumption
                     batch["images"] = np.zeros((batch_size,) + img.shape)

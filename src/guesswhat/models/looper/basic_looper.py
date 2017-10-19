@@ -68,11 +68,11 @@ class BasicLooper(object):
             padded_dialogue, seq_length = list_to_padded_tokens(full_dialogues, self.tokenizer)
 
             # Step 3 : Find the object
-            found_object, softmax, guess_objects = self.guesser.find_object(sess, padded_dialogue, seq_length, game_data)
+            found_object, softmax, id_guess_objects = self.guesser.find_object(sess, padded_dialogue, seq_length, game_data)
             score += np.sum(found_object)
 
             if store_games:
-                for d, g, t, f, go in zip(full_dialogues, game_data["raw"], game_data["targets"], found_object, guess_objects):
+                for d, g, t, f, go in zip(full_dialogues, game_data["raw"], game_data["targets"], found_object, id_guess_objects):
                     self.storage.append({"dialogue": d, "game": g, "object_id": g.objects[t].id, "success": f, "guess_object_id": g.objects[go].id})
 
             if len(optimizer) > 0:

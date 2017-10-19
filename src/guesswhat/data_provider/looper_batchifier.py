@@ -23,7 +23,7 @@ class LooperBatchifier(AbstractBatchifier):
         if self.train:
             potential_game_dico = {}
             for game in games:
-                potential_game_dico[game.picture.id] = game
+                potential_game_dico[game.image.id] = game
 
             potential_game_list = [game for game in potential_game_dico.values()]
             random.shuffle(potential_game_list)
@@ -42,7 +42,7 @@ class LooperBatchifier(AbstractBatchifier):
             batch['raw'].append(game)
 
             # Add objects: spatial features + categories (Guesser)
-            obj_spats = [get_spatial_feat(obj.bbox, game.picture.width, game.picture.height) for obj in game.objects]
+            obj_spats = [get_spatial_feat(obj.bbox, game.image.width, game.image.height) for obj in game.objects]
             obj_cats = [obj.category_id for obj in game.objects]
 
             batch['obj_spats'].append(obj_spats)
@@ -64,10 +64,10 @@ class LooperBatchifier(AbstractBatchifier):
             batch['targets_spatial'].append(obj_spats[random_index])
             batch['targets_category'].append(obj_cats[random_index])
 
-            batch['debug'].append((target_object.category, (target_object.bbox.x_center, target_object.bbox.y_center), game.picture.url))
+            batch['debug'].append((target_object.category, (target_object.bbox.x_center, target_object.bbox.y_center), game.image.url))
 
             # image
-            img = game.picture.get_image()
+            img = game.image.get_image()
             if img is not None:
                 if "images" not in batch:  # initialize an empty array for better memory consumption
                     batch["images"] = np.zeros((batch_size,) + img.shape)

@@ -8,7 +8,7 @@ import tensorflow as tf
 from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
-from generic.tf_utils.ckpt_loader import load_checkpoint
+from generic.tf_utils.ckpt_loader import load_checkpoint, create_resnet_saver
 from generic.utils.config import load_config
 from generic.utils.file_handlers import pickle_dump
 from generic.data_provider.image_loader import get_img_builder
@@ -31,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
     parser.add_argument("-config", type=str, help='Config file')
     parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
-    parser.add_argument("-image_dir", type=str, help='Directory with images')
+    parser.add_argument("-img_dir", type=str, help='Directory with images')
     parser.add_argument("-crop_dir", type=str, help='Directory with images')
     parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
     parser.add_argument("-continue_exp", type=bool, default=False, help="Continue previously started experiment?")
@@ -43,18 +43,28 @@ if __name__ == '__main__':
     config, exp_identifier, save_path = load_config(args.config, args.exp_dir)
     logger = logging.getLogger()
 
+    # Load config
+    resnet_version = config['model']["image"].get('resnet_version', 50)
+    finetune = config["model"]["image"].get('finetune', list())
+    batch_size = config['optimizer']['batch_size']
+    no_epoch = config["optimizer"]["no_epoch"]
+
     ###############################
     #  LOAD DATA
     #############################
+
     # Load image
     image_builder, crop_builder = None, None
+    use_resnet = False
     if config['inputs'].get('image', False):
         logger.info('Loading images..')
-        image_builder = get_img_builder(config['model']['image'], args.image_dir)
+        image_builder = get_img_builder(config['model']['image'], args.img_dir)
+        use_resnet = image_builder.is_raw_image()
 
     if config['inputs'].get('crop', False):
         logger.info('Loading crops..')
         crop_builder = get_img_builder(config['model']['crop'], args.crop_dir, is_crop=True)
+        use_resnet = crop_builder.is_raw_image()
 
     # Load data
     logger.info('Loading data..')
@@ -72,18 +82,19 @@ if __name__ == '__main__':
 
     # Build Optimizer
     logger.info('Building optimizer..')
-    optimizer, outputs = create_optimizer(network, config)
+    optimizer, outputs = create_optimizer(network, config, finetune=finetune)
 
     ###############################
     #  START  TRAINING
     #############################
 
-    # Load config
-    batch_size = config['optimizer']['batch_size']
-    no_epoch = config["optimizer"]["no_epoch"]
-
     # create a saver to store/load checkpoint
     saver = tf.train.Saver()
+    resnet_saver = None
+
+    # Retrieve only resnet variabes
+    if use_resnet:
+        resnet_saver = create_resnet_saver([network])
 
     # CPU/GPU option
     cpu_pool = Pool(args.no_thread, maxtasksperchild=1000)
@@ -95,6 +106,9 @@ if __name__ == '__main__':
         logger.info("Sources: " + ', '.join(sources))
 
         sess.run(tf.global_variables_initializer())
+        if use_resnet:
+            resnet_saver.restore(sess, os.path.join(args.data_dir, 'resnet_v1_{}.ckpt'.format(resnet_version)))
+
         start_epoch = load_checkpoint(sess, saver, args, save_path)
 
         best_val_err = 1e5

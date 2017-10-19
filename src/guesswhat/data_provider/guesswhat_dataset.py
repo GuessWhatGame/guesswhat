@@ -2,40 +2,41 @@ import gzip
 import json
 import copy
 
-
 from generic.data_provider.dataset import AbstractDataset
 
-def lazy_property(fn):
-    attr_name = '_lazy_' + fn.__name__
-
-    @property
-    def _lazy_property(self):
-        if not hasattr(self, attr_name):
-            setattr(self, attr_name, fn(self))
-        return getattr(self, attr_name)
-    return _lazy_property
+# TODO find a cleaner way!
+try:
+    import cocoapi.PythonAPI.pycocotools.mask as cocoapi
+    use_coco = True
+except ImportError:
+    print("Coco API was not detected - advanced segmentation features cannot be used")
+    use_coco = False
+    pass
 
 
 class Game:
 
-    def __init__(self, id, object_id, picture, objects, qas, status, image_builder, crop_builder):
+    def __init__(self, id, object_id, image, objects, qas, status, which_set, image_builder, crop_builder):
         self.dialogue_id = id
         self.object_id = object_id
-        self.picture = Picture(picture["id"],
-                               picture["width"],
-                               picture["height"],
-                               picture["coco_url"],
-                               image_builder=image_builder)
+        self.image = Image(id=image["id"],
+                           width=image["width"],
+                           height=image["height"],
+                           url=image["coco_url"],
+                           which_set=which_set,
+                           image_builder=image_builder)
         self.objects = []
         for o in objects:
 
-            new_obj = Object(o['id'],
-                             o['category'],
-                             o['category_id'],
-                             Bbox(o['bbox'], picture["width"], picture["height"]),
-                             o['area'],
+            new_obj = Object(id=o['id'],
+                             category=o['category'],
+                             category_id=o['category_id'],
+                             bbox=Bbox(o['bbox'], image["width"], image["height"]),
+                             area=o['area'],
+                             segment=o['segment'],
                              crop_builder=crop_builder,
-                             picture_id=picture["id"])
+                             which_set=which_set,
+                             image=self.image)
 
             self.objects.append(new_obj)
             if o['id'] == object_id:
@@ -47,24 +48,23 @@ class Game:
         self.status = status
 
 
-class Picture:
-    def __init__(self, id, width, height, url, image_builder=None):
+class Image:
+    def __init__(self, id, width, height, url, which_set, image_builder=None):
         self.id = id
         self.width = width
         self.height = height
         self.url = url
 
+        self.image_loader = None
         if image_builder is not None:
             filename = "{}.jpg".format(id)
-            self.image_loader = image_builder.build(id, filename=filename, optional=False)
+            self.image_loader = image_builder.build(id, which_set=which_set, filename=filename, optional=False)
 
     def get_image(self, **kwargs):
-        assert self.image_loader is not None, "Invalid image loader"
-        return self.image_loader.get_image(**kwargs)
-
-
-
-
+        if self.image_loader is not None:
+            return self.image_loader.get_image(**kwargs)
+        else:
+            return None
 
 class Bbox:
     def __init__(self, bbox, im_width, im_height):
@@ -85,16 +85,28 @@ class Bbox:
 
 
 class Object:
-    def __init__(self, id, category, category_id, bbox, area, crop_builder, picture_id,**kwargs):
+    def __init__(self, id, category, category_id, bbox, area, segment, crop_builder, image, which_set):
         self.id = id
         self.category = category
         self.category_id = category_id
         self.bbox = bbox
         self.area = area
+        self.segment = segment
+
+        # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/mask.py
+        # self.rle_mask = None
+        # if use_coco:
+        #     self.rle_mask = cocoapi.frPyObjects(self.segment,
+        #                                         h=image.height,
+        #                                         w=image.width)
 
         if crop_builder is not None:
-            filename = "{}.jpg".format(picture_id)
-            self.crop_loader = crop_builder.build(id, filename=filename, bbox=bbox)
+            filename = "{}.jpg".format(image.id)
+            self.crop_loader = crop_builder.build(id, filename=filename, which_set=which_set, bbox=bbox)
+
+    # def get_mask(self):
+    #     assert self.rle_mask is not None, "Mask option are not available, please compile and link cocoapi (cf. cocoapi/PythonAPI/setup.py)"
+    #     return cocoapi.decode(self.rle_mask)
 
     def get_crop(self, **kwargs):
         assert self.crop_loader is not None, "Invalid crop loader"
@@ -118,8 +130,9 @@ class Dataset(AbstractDataset):
                          object_id=game['object_id'],
                          objects=game['objects'],
                          qas=game['qas'],
-                         picture=game['image'],
+                         image=game['image'],
                          status=game['status'],
+                         which_set=which_set,
                          image_builder=image_builder,
                          crop_builder=crop_builder)
 
@@ -156,6 +169,40 @@ class OracleDataset(AbstractDataset):
         return games
 
 
+class CropDataset(AbstractDataset):
+    """
+    Each game contains no question/answers but a new object
+    """
+    def __init__(self, dataset):
+        old_games = dataset.get_data()
+        new_games = []
+        for g in old_games:
+            new_games += self.split(g)
+        super(CropDataset, self).__init__(new_games)
+
+    @classmethod
+    def load(cls, folder, which_set, image_builder=None, crop_builder=None):
+        return cls(Dataset(folder, which_set, image_builder, crop_builder))
+
+    def split(self, game):
+        games = []
+        for obj in game.objects:
+            new_game = copy.copy(game)
+            new_game.questions = []
+            new_game.question_ids = []
+            new_game.answers = []
+            new_game.object_id = obj.id
+
+            # Hack the image id to differentiate objects
+            new_game.image = copy.copy(game.image)
+            new_game.image.id = obj.id
+
+            games.append(new_game)
+
+        return games
+
+
+
 def dump_samples_into_dataset(data, save_path, tokenizer, name="model"):
 
     with gzip.open(save_path.format('guesswhat.' + name + '.jsonl.gz'), 'wb') as f:
@@ -181,10 +228,10 @@ def dump_samples_into_dataset(data, save_path, tokenizer, name="model"):
             sample["id"] = i
             sample["qas"] = qas
             sample["image"] = {
-                "id": game.picture.id,
-                "width": game.picture.width,
-                "height": game.picture.height,
-                "coco_url": game.picture.url
+                "id": game.image.id,
+                "width": game.image.width,
+                "height": game.image.height,
+                "coco_url": game.image.url
             }
 
             sample["objects"] = [{"id": o.id,

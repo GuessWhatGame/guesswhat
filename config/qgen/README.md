@@ -1,6 +1,6 @@
 # QGen config
 
-The qgen task requires to produce a new question given a picture and the history of dialogues.
+The qgen task requires to produce a new question given an image and the history of dialogues.
 
 The configuration file is divided into three parts:
  - QGen model definition
@@ -13,7 +13,7 @@ The keyword "model" refers model configuration of the qgen:
 
     "word_embedding_size": int,         # dimension of the word embedding for the dialogue
     "num_lstm_units": int,              # dimension of the LSTM for the dialogue
-    "picture_embedding_size": int,      # dimension of the picture projection
+    "image_embedding_size": int,        # dimension of the image projection
 
     "image": {                          # configuration of the inout image
       "image_input": "features"/"raw",  # select the image inputs: raw vs feature

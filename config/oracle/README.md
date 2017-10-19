@@ -1,7 +1,7 @@
 # Oracle config
 
-The oracle task requires to produce a yes-no answer for any object within a picture given a natural language question.
-Given an question, a picture and a specific object in the picture, the oracle must provide a valid yes/no answer
+The oracle task requires to produce a yes-no answer for any object within an image given a natural language question.
+Given an question, an image and a specific object in the image, the oracle must provide a valid yes/no answer
 
 The configuration file is divided into four parts:
  - Oracle inputs

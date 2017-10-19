@@ -19,10 +19,6 @@ from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
 
 
-
-
-
-
 if __name__ == '__main__':
 
     ###############################
@@ -35,7 +31,7 @@ if __name__ == '__main__':
     parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
     parser.add_argument("-config", type=str, help='Config file')
     parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
-    parser.add_argument("-image_dir", type=str, help='Directory with images')
+    parser.add_argument("-img_dir", type=str, help='Directory with images')
     parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
     parser.add_argument("-continue_exp", type=bool, default=False, help="Continue previously started experiment?")
     parser.add_argument("-gpu_ratio", type=float, default=1., help="How many GPU ram is required? (ratio)")
@@ -51,7 +47,7 @@ if __name__ == '__main__':
 
     # Load image
     logger.info('Loading images..')
-    image_loader = get_img_builder(config['model']['image'], args.image_dir)
+    image_loader = get_img_builder(config['model']['image'], args.img_dir)
     crop_loader = None  # get_img_loader(config, 'crop', args.image_dir)
 
     # Load data

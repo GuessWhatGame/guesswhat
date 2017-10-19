@@ -18,7 +18,7 @@ class QGenNetworkLSTM(AbstractNetwork):
 
             mini_batch_size = None
 
-            # Picture
+            # Image
             self.images = tf.placeholder(tf.float32, [mini_batch_size] + config['image']["dim"], name='images')
 
             # Question
@@ -67,11 +67,11 @@ class QGenNetworkLSTM(AbstractNetwork):
 
 
             # Reduce the embedding size of the image
-            with tf.variable_scope('picture_embedding'):
-                self.picture_emb = utils.fully_connected(self.image_out,
-                                                    config['picture_embedding_size'])
-                picture_emb = tf.expand_dims(self.picture_emb, 1)
-                picture_emb = tf.tile(picture_emb, [1, tf.shape(input_dialogues)[1], 1])
+            with tf.variable_scope('image_embedding'):
+                self.image_emb = utils.fully_connected(self.image_out,
+                                                       config['image_embedding_size'])
+                image_emb = tf.expand_dims(self.image_emb, 1)
+                image_emb = tf.tile(image_emb, [1, tf.shape(input_dialogues)[1], 1])
 
             # Compute the question embedding
             input_words = utils.get_embedding(
@@ -80,11 +80,11 @@ class QGenNetworkLSTM(AbstractNetwork):
                 n_dim=config['word_embedding_size'],
                 scope="word_embedding")
 
-            # concat word embedding and picture embedding
-            decoder_input = tf.concat([input_words, picture_emb], axis=2, name="concat_full_embedding")
+            # concat word embedding and image embedding
+            decoder_input = tf.concat([input_words, image_emb], axis=2, name="concat_full_embedding")
 
 
-            # encode one word+picture
+            # encode one word+image
             decoder_lstm_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(
                     config['num_lstm_units'],
                     layer_norm=False,
@@ -211,7 +211,7 @@ class QGenNetworkLSTM(AbstractNetwork):
                     scope="word_embedding",
                     reuse=True)
 
-                inp_emb = tf.concat([word_emb, self.picture_emb], axis=1)
+                inp_emb = tf.concat([word_emb, self.image_emb], axis=1)
                 with tf.variable_scope("word_decoder"):
                     lstm_cell = tf.contrib.rnn.LayerNormBasicLSTMCell(
                         config['num_lstm_units'],
