@@ -104,7 +104,7 @@ if __name__ == '__main__':
         sess.run(tf.global_variables_initializer())
         start_epoch = load_checkpoint(sess, saver, args, save_path)
 
-        best_val_err = 1e5
+        best_val_err = 0
         best_train_err = None
 
         # create training tools
