@@ -105,13 +105,13 @@ if __name__ == '__main__':
                                       batch_size=batch_size, pool=cpu_pool,
                                       batchifier=batchifier,
                                       shuffle=True)
-            [train_loss] = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer])
+            [train_loss, _] = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer])
 
             valid_iterator = Iterator(validset, pool=cpu_pool,
                                       batch_size=batch_size*2,
                                       batchifier=batchifier,
                                       shuffle=False)
-            [valid_loss] = evaluator.process(sess, valid_iterator, outputs=outputs)
+            [valid_loss, _] = evaluator.process(sess, valid_iterator, outputs=outputs)
 
             logger.info("Training loss: {}".format(train_loss))
             logger.info("Validation loss: {}".format(valid_loss))
@@ -130,6 +130,6 @@ if __name__ == '__main__':
                                  batch_size=batch_size*2,
                                  batchifier=batchifier,
                                  shuffle=True)
-        [test_loss] = evaluator.process(sess, test_iterator, outputs)
+        [test_loss, _] = evaluator.process(sess, test_iterator, outputs)
 
         logger.info("Testing loss: {}".format(test_loss))
