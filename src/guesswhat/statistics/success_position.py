@@ -17,7 +17,7 @@ class SuccessPosition(AbstractPlotter):
         for game in games:
 
             bbox = game.object.bbox
-            picture = game.picture
+            picture = game.image
 
             x = int(bbox.x_center / picture.width * x_bin)
             y = int(bbox.y_center / picture.height * y_bin)
