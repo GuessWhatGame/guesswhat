@@ -15,7 +15,7 @@ from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
 from guesswhat.models.guesser.guesser_network import GuesserNetwork
 from guesswhat.models.looper.basic_looper import BasicLooper
 
-from guesswhat.data_provider.guesswhat_dataset import Dataset
+from guesswhat.data_provider.guesswhat_dataset import Dataset, dump_samples_into_dataset
 
 from guesswhat.data_provider.looper_batchifier import LooperBatchifier
 
@@ -233,7 +233,15 @@ if __name__ == '__main__':
                                  batchifier=eval_batchifier,
                                  shuffle=False,
                                  use_padding=True)
-        test_score = looper_evaluator.process(sess, test_iterator, mode="greedy")
+        test_score = looper_evaluator.process(sess, test_iterator, mode="greedy", store_games=True)
         logger.info("Test success ratio (greedy): {}".format(test_score))
+
+        # Retrieve the generated games and dump them as a dataset
+        generated_dialogues = looper_evaluator.get_storage()
+        dump_samples_into_dataset(generated_dialogues,
+                                  save_path=save_path,
+                                  tokenizer=tokenizer,
+                                  name="greedy")
+        logger.info("Generated games were dumped...")
 
         logger.info(">>>------------------------------------------------<<<")
