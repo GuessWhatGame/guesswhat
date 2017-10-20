@@ -168,8 +168,8 @@ if __name__ == '__main__':
 
         evaluator = Evaluator(loop_sources, qgen_network.scope_name, network=qgen_network, tokenizer=tokenizer)
 
-        train_batchifier = LooperBatchifier(tokenizer, loop_sources, train=True)
-        eval_batchifier = LooperBatchifier(tokenizer, loop_sources, train=False)
+        train_batchifier = LooperBatchifier(tokenizer, loop_sources, generate_new_games=True)
+        eval_batchifier = LooperBatchifier(tokenizer, loop_sources, generate_new_games=False)
 
         # Initialize the looper to eval/train the game-simulation
         qgen_network.build_sampling_graph(qgen_config["model"], tokenizer=tokenizer, max_length=loop_config['loop']['max_depth'])

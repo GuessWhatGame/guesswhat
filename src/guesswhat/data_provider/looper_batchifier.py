@@ -11,16 +11,16 @@ from generic.data_provider.nlp_utils import padder, padder_3d
 
 class LooperBatchifier(AbstractBatchifier):
 
-    def __init__(self, tokenizer, sources, train, **kwargs):
+    def __init__(self, tokenizer, sources, generate_new_games, **kwargs):
         self.tokenizer = tokenizer
         self.sources = sources
-        self.train = train
+        self.generate_new_games = generate_new_games
         self.kwargs = kwargs
 
     def filter(self, games):
 
         # Step 1 : extract potential game
-        if self.train:
+        if self.generate_new_games:
             potential_game_dico = {}
             for game in games:
                 potential_game_dico[game.image.id] = game
@@ -49,7 +49,7 @@ class LooperBatchifier(AbstractBatchifier):
             batch['obj_cats'].append(obj_cats)
 
             # Pick one random object in the game: TODO clean a bit
-            if self.train:
+            if self.generate_new_games:
                 random_index = random.randint(0, len(game.objects) - 1)
             else:
                 random_index = game.objects.index(game.object)
