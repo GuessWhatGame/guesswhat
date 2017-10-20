@@ -134,11 +134,11 @@ if __name__ == '__main__':
             valid_loss, valid_accuracy = evaluator.process(sess, valid_iterator, outputs=outputs)
 
             logger.info("Training loss: {}".format(train_loss))
-            logger.info("Training accuracy: {}".format(train_accuracy))
+            logger.info("Training error: {}".format(1-train_accuracy))
             logger.info("Validation loss: {}".format(valid_loss))
-            logger.info("Validation accuracy: {}".format(valid_accuracy))
+            logger.info("Validation error: {}".format(1-valid_accuracy))
 
-            if valid_accuracy < best_val_err:
+            if valid_accuracy > best_val_err:
                 best_train_err = train_accuracy
                 best_val_err = valid_accuracy
                 saver.save(sess, save_path.format('params.ckpt'))
@@ -155,4 +155,4 @@ if __name__ == '__main__':
         [test_loss, test_accuracy] = evaluator.process(sess, test_iterator, outputs)
 
         logger.info("Testing loss: {}".format(test_loss))
-        logger.info("Testing accuracy: {}".format(test_accuracy))
+        logger.info("Testing error: {}".format(1-test_accuracy))
