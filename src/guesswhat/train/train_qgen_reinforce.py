@@ -29,17 +29,17 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('Question generator (policy gradient baseline))')
 
-    parser.add_argument("-data_dir", type=str, help="Directory with data")
-    parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
+    parser.add_argument("-data_dir", type=str, required=True, help="Directory with data")
+    parser.add_argument("-exp_dir", type=str, required=True, help="Directory in which experiments are stored")
     parser.add_argument("-img_dir", type=str, help='Directory with images')
     parser.add_argument("-crop_dir", type=str, help='Directory with images')
-    parser.add_argument("-config", type=str, help='Config file')
+    parser.add_argument("-config", type=str, required=True, help='Config file')
     parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
 
     parser.add_argument("-networks_dir", type=str, help="Directory with pretrained networks")
-    parser.add_argument("-oracle_identifier", type=str, default='5297505520ab25d51eabb5e652843380', help='Oracle identifier')  # Use checkpoint id instead?
-    parser.add_argument("-qgen_identifier", type=str, default='a2aac2dc381bd51f82332106efb14ecc', help='Qgen identifier')
-    parser.add_argument("-guesser_identifier", type=str, default='4061b58d200976b96006f6dcea468aef', help='Guesser identifier')
+    parser.add_argument("-oracle_identifier", type=str, required=True , help='Oracle identifier')  # Use checkpoint id instead?
+    parser.add_argument("-qgen_identifier", type=str, required=True, help='Qgen identifier')
+    parser.add_argument("-guesser_identifier", type=str, required=True, help='Guesser identifier')
 
     # parser.add_argument("-from_checkpoint", type=bool, default=False, help="Start from checkpoint?")
     parser.add_argument("-from_checkpoint", type=str, help="Start from checkpoint?")
@@ -118,7 +118,7 @@ if __name__ == '__main__':
                                         var_list=baseline_variables,
                                         optim_cst=tf.train.GradientDescentOptimizer,
                                         apply_update_ops=False,
-                                        loss=qgen_network.policy_gradient_loss)
+                                        loss=qgen_network.baseline_loss)
 
     optimizer = [pg_optimize, baseline_optimize]
 
