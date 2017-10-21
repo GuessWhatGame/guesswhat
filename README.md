@@ -130,7 +130,7 @@ md5sum $file
 ### Pretrained networks
 
 Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained_models.zip).
-(Warning Tensorflow 1.1). Those networks can then be loaded to reproduce the results.
+Note : We are training new networks for tensorflow 1.3. (Not backward compatible...)
 
 
 ## Reproducing results
@@ -272,7 +272,7 @@ python src/guesswhat/train/train_qgen_reinforce.py
 ```
 
 
-Detailled scores:
+Detailled accuracies:
 
 Cross-entropy - Sampling: 39.2%
 Cross-entropy - Greedy 40.8%
@@ -292,6 +292,7 @@ Cross-entropy - Beam: 44.6%
 | Greedy     | 43.5%  | 60.3% |
 | BeamSearch | 47.1% | 60.2% |
 
+Note that those scores are *exact* accuracies. 
 
 ## FAQ
 
