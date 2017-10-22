@@ -12,6 +12,6 @@
     "beam_k_best" : 20
   },
 
-  "seed": 1
+  "seed": -1
 
 }

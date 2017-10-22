@@ -94,7 +94,7 @@ if args.network == "resnet":
 
 
 elif args.network == "vgg":
-    _, end_points = vgg.vgg_16(images)
+    _, end_points = vgg.vgg_16(images, is_training=False, dropout_keep_prob=1.0)
     ft_name = os.path.join("vgg_16", args.feature_name)
     ft_output = end_points[ft_name]
 else:
