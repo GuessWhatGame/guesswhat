@@ -1,6 +1,6 @@
 {
   "optimizer": {
-    "no_epoch": 100,
+    "no_epoch": 150,
     "learning_rate": 1e-3,
     "batch_size": 64,
     "clip_val": 5
