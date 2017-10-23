@@ -130,8 +130,9 @@ md5sum $file
 ### Pretrained networks
 
 Pretrained networks can be downloaded here:
- - Tensorflow (1.0<->1.2): [network](http://florian-strub.com/pretrained_models.zip).
+ - Tensorflow (1.0<->1.2): [network](http://florian-strub.com/github/pretrained_models.tf1-2.zip).
  - Tensorflow (1.3): coming soon...
+ 
 Note that the reported results comes from the first version of pre-trained networks.
 
 ## Reproducing results
