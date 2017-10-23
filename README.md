@@ -179,9 +179,9 @@ done
 
 Noticeably, one can also extract VGG-fc7 or Resnet features. Please follow the script documentation for more advanced setting.
 
-WARNING: During our initial experiments, we use [this implementation](https://github.com/huyng/tensorflow-vgg) of VGG.
-We then switch to Tensorflow official pre-trained model to ease code maintenance. Yet, it turns out that the extracted vgg features from slim are actually lower quality of the original one. (Final results are 1point lower with slim!!!). The [vgg features](www.florian-strub.com/github/ft_vgg_img.zip) are the exact vgg-features we use in our best experiments.
-Yet, if you want to increase the baseline, I strongly recommend you to use ResNet features :) 
+**WARNING**: During our initial experiments, we use [this implementation](https://github.com/huyng/tensorflow-vgg) of VGG.
+We then switch to Tensorflow official pre-trained model, namely slim, to ease code maintenance. It turns out that the extracted vgg features from slim are actually of lower quality than the original one. (Final results are 1 point lower with slim!!!). These [vgg features](www.florian-strub.com/github/ft_vgg_img.zip) are the exact vgg-features we used in our best experiments.
+Yet, if you want to increase the baseline, we strongly recommend you to use ResNet features :) 
 
 #### Create dictionary
 
