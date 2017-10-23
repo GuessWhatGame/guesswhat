@@ -129,9 +129,10 @@ md5sum $file
 
 ### Pretrained networks
 
-Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained_models.zip).
-Note : We are training new networks for tensorflow 1.3. (Not backward compatible...)
-
+Pretrained networks can be downloaded here:
+ - Tensorflow (1.0<->1.2): [network](http://florian-strub.com/pretrained_models.zip).
+ - Tensorflow (1.3): coming soon...
+Note that the reported results comes from the first version of pre-trained networks.
 
 ## Reproducing results
 
@@ -179,7 +180,7 @@ done
 
 Noticeably, one can also extract VGG-fc7 or Resnet features. Please follow the script documentation for more advanced setting.
 
-**WARNING**: During our initial experiments, we use [this implementation](https://github.com/huyng/tensorflow-vgg) of VGG.
+**WARNING**: During our initial experiments, we use [this implementation](https://github.com/machrisaa/tensorflow-vgg) of VGG.
 We then switch to Tensorflow official pre-trained model, namely slim, to ease code maintenance. It turns out that the extracted vgg features from slim are actually of lower quality than the original one. (Final results are 1 point lower with slim!!!). These [vgg features](www.florian-strub.com/github/ft_vgg_img.zip) are the exact vgg-features we used in our best experiments.
 Yet, if you want to increase the baseline, we strongly recommend you to use ResNet features :) 
 
