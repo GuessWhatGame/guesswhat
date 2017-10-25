@@ -249,7 +249,8 @@ def dump_samples_into_dataset(data, save_path, tokenizer, name="model"):
                                   "category_id": o.category_id,
                                   "category": o.category,
                                   "area": o.area,
-                                  "bbox": o.bbox.coco_bbox
+                                  "bbox": o.bbox.coco_bbox,
+                                  "segment" : [], #no segment to avoid making the file to big
                                   } for o in game.objects]
 
             sample["object_id"] = object_id
