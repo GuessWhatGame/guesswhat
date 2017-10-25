@@ -30,7 +30,7 @@ The project is part of the CHISTERA - IGLU Project.
 
 ## Introduction
 
-We introduce \GW, a two-player guessing game as a testbed for research on the interplay of computer vision and dialogue systems. The goal of the game is to locate an unknown object in a rich image scene by asking a sequence of questions.
+We introduce GuessWhat?!, a two-player guessing game as a testbed for research on the interplay of computer vision and dialogue systems. The goal of the game is to locate an unknown object in a rich image scene by asking a sequence of questions.
 Higher-level image understanding, like spatial reasoning and language grounding, is required to solve the proposed task.
 
 ## Installation
