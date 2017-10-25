@@ -52,7 +52,7 @@ def test_model(sess, testset, tokenizer, oracle, guesser, qgen, cpu_pool, batch_
     test_qgen(sess, testset, tokenizer, qgen, cpu_pool, batch_size, logger)
 
 
-def compute_qgen_accuracy(sess, dataset, batchifier, evaluator, mode, tokenizer, save_path, cpu_pool, batch_size, dump_suffix):
+def compute_qgen_accuracy(sess, dataset, batchifier, evaluator, mode, tokenizer, save_path, cpu_pool, batch_size, store_games, dump_suffix):
 
     logger = logging.getLogger()
 
@@ -62,13 +62,14 @@ def compute_qgen_accuracy(sess, dataset, batchifier, evaluator, mode, tokenizer,
                                  batchifier=batchifier,
                                  shuffle=False,
                                  use_padding=True)
-        test_score = evaluator.process(sess, test_iterator, mode=m, store_games=True)
+        test_score = evaluator.process(sess, test_iterator, mode=m, store_games=store_games)
 
         # Retrieve the generated games and dump them as a dataset
-        generated_dialogues = evaluator.get_storage()
-        dump_samples_into_dataset(generated_dialogues,
-                                  save_path=save_path,
-                                  tokenizer=tokenizer,
-                                  name=dump_suffix + "." + m)
+        if store_games:
+            generated_dialogues = evaluator.get_storage()
+            dump_samples_into_dataset(generated_dialogues,
+                                      save_path=save_path,
+                                      tokenizer=tokenizer,
+                                      name=dump_suffix + "." + m)
 
         logger.info("Accuracy ({} - {}): {}".format(dataset.set, m, test_score))

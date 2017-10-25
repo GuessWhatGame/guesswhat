@@ -44,7 +44,9 @@ if __name__ == '__main__':
     # parser.add_argument("-continue_exp", type=bool, default=False, help="Continue previously started experiment?")
     parser.add_argument("-from_checkpoint", type=str, help="Start from checkpoint?")
     parser.add_argument("-skip_training", type=bool, default=False, help="Start from checkpoint?")
-    parser.add_argument("-evaluate_all", type=bool, default=False, help="Evaluate sampling, greedy and BeamSearc?")
+    parser.add_argument("-evaluate_all", type=bool, default=False, help="Evaluate sampling, greedy and BeamSearch?")  #TODO use an input list
+    parser.add_argument("-store_games", type=bool, default=True, help="Should we dump the game at evaluation times")
+
 
     parser.add_argument("-gpu_ratio", type=float, default=0.95, help="How muany GPU ram is required? (ratio)")
     parser.add_argument("-no_thread", type=int, default=1, help="No thread to load batch")
@@ -160,13 +162,6 @@ if __name__ == '__main__':
             oracle_saver.restore(sess, os.path.join(args.networks_dir, 'oracle', args.oracle_identifier, 'params.ckpt'))
             guesser_saver.restore(sess, os.path.join(args.networks_dir, 'guesser', args.guesser_identifier, 'params.ckpt'))
 
-        # check that models are correctly loaded
-        test_model(sess, testset, cpu_pool=cpu_pool, tokenizer=tokenizer,
-                   oracle=oracle_network,
-                   guesser=guesser_network,
-                   qgen=qgen_network,
-                   batch_size=100,
-                   logger=logger)
 
         # create training tools
         loop_sources = qgen_network.get_sources(sess)
@@ -185,9 +180,26 @@ if __name__ == '__main__':
                                        qgen=qgen_network,
                                        tokenizer=tokenizer)
 
+
+        # Compute the initial scores
+        logger.info(">>>-------------- INITIAL SCORE ---------------------<<<")
+        loop_saver.restore(sess, save_path.format('params.ckpt'))
+
+        logger.info(">>>  Initial models  <<<")
+        test_model(sess, testset, cpu_pool=cpu_pool, tokenizer=tokenizer,
+                   oracle=oracle_network,guesser=guesser_network, qgen=qgen_network,
+                   batch_size=batch_size*2, logger=logger)
+
+        logger.info(">>>  New Objects  <<<")
+        compute_qgen_accuracy(sess, trainset, batchifier=train_batchifier, evaluator=looper_evaluator, tokenizer=tokenizer,
+                              mode=mode_to_evaluate, save_path=save_path, cpu_pool=cpu_pool, batch_size=batch_size,
+                              store_games=args.store_games, dump_suffix="init.new_object")
+
+        logger.info(">>>  New Games  <<<")
         compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, evaluator=looper_evaluator, tokenizer=tokenizer,
-                 mode=mode_to_evaluate, save_path=save_path, cpu_pool=cpu_pool, batch_size=batch_size,
-                 dump_suffix="init.new_games")
+                              mode=mode_to_evaluate, save_path=save_path, cpu_pool=cpu_pool, batch_size=batch_size,
+                              store_games=args.store_games, dump_suffix="init.new_games")
+        logger.info(">>>------------------------------------------------<<<")
 
         if args.skip_training:
             logger.info("Skip training...")
@@ -215,8 +227,8 @@ if __name__ == '__main__':
                                       use_padding=True)
             val_score = looper_evaluator.process(sess, valid_iterator, mode="sampling")
 
-            logger.info("Train (Explore) success ratio : {}".format(train_score))
-            logger.info("Val success ratio : {}".format(val_score))
+            logger.info("Accuracy (train - sampling) : {}".format(train_score))
+            logger.info("Accuracy (valid - sampling) : {}".format(val_score))
 
             if val_score > final_val_score:
                 logger.info("Save checkpoint...")
@@ -227,8 +239,15 @@ if __name__ == '__main__':
         # Compute the test score with early stopping
         logger.info(">>>-------------- FINAL SCORE ---------------------<<<")
         loop_saver.restore(sess, save_path.format('params.ckpt'))
+
+        logger.info(">>>  New Objects  <<<")
+        compute_qgen_accuracy(sess, trainset, batchifier=train_batchifier, evaluator=looper_evaluator, tokenizer=tokenizer,
+                              mode=mode_to_evaluate, save_path=save_path, cpu_pool=cpu_pool, batch_size=batch_size,
+                              store_games=args.store_games, dump_suffix="final.new_object")
+
+        logger.info(">>>  New Games  <<<")
         compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, evaluator=looper_evaluator, tokenizer=tokenizer,
-                 mode=mode_to_evaluate, save_path=save_path, cpu_pool=cpu_pool, batch_size=batch_size,
-                 dump_suffix="final.new_games")
+                              mode=mode_to_evaluate, save_path=save_path, cpu_pool=cpu_pool, batch_size=batch_size,
+                              store_games=args.store_games, dump_suffix="final.new_games")
         logger.info(">>>------------------------------------------------<<<")
 
