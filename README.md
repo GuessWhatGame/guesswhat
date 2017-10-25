@@ -129,9 +129,11 @@ md5sum $file
 
 ### Pretrained networks
 
-Pretrained networks can be downloaded [here](http://florian-strub.com/pretrained_models.zip).
-Note : We are training new networks for tensorflow 1.3. (Not backward compatible...)
-
+Pretrained networks can be downloaded here:
+ - Tensorflow (1.0<->1.2): [network](http://florian-strub.com/github/pretrained_models.tf1-2.zip).
+ - Tensorflow (1.3): [network](http://florian-strub.com/github/pretrained_models.tf1-3.zip).
+ 
+Note that the reported results comes from the first version of pre-trained networks.
 
 ## Reproducing results
 
@@ -148,7 +150,13 @@ Before starting the training, one needs to compute the image features and the wo
 #### Extract image features
 Following the original papers, we are going to extract fc8 features from the coco images by using a VGG-16 network.
 
-First, one need to download the vgg pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/research/slim):
+Solution 1: You can directly download the vgg features:  
+```
+wget www.florian-strub.com/github/ft_vgg_img.zip -P data/images
+unzip data/images/ft_vgg_img.zip -d data/images/
+```
+
+Solution 2: You can download vgg-16 pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/research/slim):
 
 ```
 wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz -P data/
@@ -171,7 +179,11 @@ for mode in "${array[@]}"; do
 done
 ```
 
-Noticeably, one can also extract VGG-fc7 or Resnet150-block4 features. Please follow the script documentation for more advanced setting.
+Noticeably, one can also extract VGG-fc7 or Resnet features. Please follow the script documentation for more advanced setting.
+
+**WARNING**: During our initial experiments, we use [this implementation](https://github.com/machrisaa/tensorflow-vgg) of VGG.
+We then switch to Tensorflow official pre-trained model, namely slim, to ease code maintenance. It turns out that the extracted vgg features from slim are actually of lower quality than the original one. (Final results are 1 point lower with slim!!!). These [vgg features](www.florian-strub.com/github/ft_vgg_img.zip) are the exact vgg-features we used in our best experiments.
+Yet, if you want to increase the baseline, we strongly recommend you to use ResNet features :) 
 
 #### Create dictionary
 
