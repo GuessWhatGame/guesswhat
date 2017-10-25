@@ -150,13 +150,13 @@ Before starting the training, one needs to compute the image features and the wo
 #### Extract image features
 Following the original papers, we are going to extract fc8 features from the coco images by using a VGG-16 network.
 
-Solution 1: You can directly download the vgg features:  
+- Solution 1: You can directly download the vgg features:  
 ```
 wget www.florian-strub.com/github/ft_vgg_img.zip -P data/images
 unzip data/images/ft_vgg_img.zip -d data/images/
 ```
 
-Solution 2: You can download vgg-16 pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/research/slim):
+- Solution 2: You can download vgg-16 pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/research/slim):
 
 ```
 wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz -P data/
@@ -279,10 +279,16 @@ python src/guesswhat/train/train_qgen_reinforce.py
     -config config/looper/config.json \
     -img_dir data/ft_vgg_img \
     -crop_dir data/ft_vgg_crop \
-    -networks_dir out \
+    -networks_dir out/ \
+    -oracle_identifier <oracle_identifier> \
+    -qgen_identifier <qgen_identifier> \
+    -guesser_identifier <guesser_identifier> \
+    -evaluate_all false \
+    -store_games true ´\
     -no_thread 2
 ```
 
+Activate the flag evaluate_all to also compute the accuracy with BeamSearch and Sampling (Time-consuming).
 
 Detailled accuracies:
 
@@ -300,6 +306,23 @@ Detailled accuracies:
 | BeamSearch | 47.1% | 60.2% |
 
 Note that those scores are *exact* accuracies. 
+
+### Plot dataset
+
+It is possible to plot figures analysing guesswhat raw dataset or QGen generated games (if you set the flag, store_games to True). To do so, 
+
+```
+python src/guesswhat/statistics/statistics/plot_them_all.py
+   -data_dir data 
+   -out_dir out 
+   -name train
+   -ignore_incomplete false
+```
+
+- The "ignore_incomplete flag" will take into account or ignore incomplete games in the dataset.
+- The "name" flag correspond to the following variable guesswhat.${name}.jsonl.gz
+
+Note: If you want to compute you personal plot, you can user the AbstractPloter interface and append your implementation into the plot_them_all.py script.
 
 ## FAQ
 
