@@ -121,6 +121,8 @@ class Dataset(AbstractDataset):
         file = '{}/guesswhat.{}.jsonl.gz'.format(folder, which_set)
         games = []
 
+        self.set = which_set
+
         with gzip.open(file) as f:
             for line in f:
                 line = line.decode("utf-8")
@@ -202,30 +204,39 @@ class CropDataset(AbstractDataset):
         return games
 
 
-
 def dump_samples_into_dataset(data, save_path, tokenizer, name="model"):
 
     with gzip.open(save_path.format('guesswhat.' + name + '.jsonl.gz'), 'wb') as f:
-        for i, d in enumerate(data):
+        for id_game, d in enumerate(data):
             dialogue = d["dialogue"]
             game = d["game"]
             object_id = d["object_id"]
             success = d["success"]
+            prob_objects = d["prob_objects"]
+            guess_object_id = d["guess_object_id"]
 
             sample = {}
 
             qas = []
-            start = 1
-            for i, word in enumerate(dialogue):
+            start  = 1
+            for k, word in enumerate(dialogue):
                 if word == tokenizer.yes_token or \
                                 word == tokenizer.no_token or \
                                 word == tokenizer.non_applicable_token:
-                    q = tokenizer.decode(dialogue[start:i - 1])
-                    a = tokenizer.decode([dialogue[i]])
-                    qas.append({"question": q, "answer": a[1:-1], "id":0})
-                    start = i + 1
+                    q = tokenizer.decode(dialogue[start:k - 1])
+                    a = tokenizer.decode([dialogue[k]])
 
-            sample["id"] = i
+                    prob_obj = list(prob_objects[len(qas),:len(game.objects)])
+                    prob_obj = [str(round(p,3)) for p in prob_obj] # decimal are not supported y default in json encoder
+
+                    qas.append({"question": q,
+                                "answer": a[1:-1],
+                                "id":0,
+                                "p": prob_obj})
+
+                    start = k + 1
+
+            sample["id"] = id_game
             sample["qas"] = qas
             sample["image"] = {
                 "id": game.image.id,
@@ -242,6 +253,7 @@ def dump_samples_into_dataset(data, save_path, tokenizer, name="model"):
                                   } for o in game.objects]
 
             sample["object_id"] = object_id
+            sample["guess_object_id"] = guess_object_id
             sample["status"] = "success" if success else "failure"
 
             f.write(str(json.dumps(sample)).encode())

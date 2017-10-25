@@ -39,6 +39,8 @@ class BasicLooper(object):
             full_dialogues = [np.array([self.tokenizer.start_token]) for _ in range(self.batch_size)]
             prev_answers = full_dialogues
 
+            prob_objects = []
+
             no_elem = len(game_data["raw"])
             total_elem += no_elem
 
@@ -63,17 +65,29 @@ class BasicLooper(object):
                 # Step 1.4 set new input tokens
                 prev_answers = [[a]for a in answers]
 
+                # Step 1.5 Compute the probability of finding the object after each turn
+                if store_games:
+                    padded_dialogue, seq_length = list_to_padded_tokens(full_dialogues, self.tokenizer)
+                    _, softmax, _ = self.guesser.find_object(sess, padded_dialogue, seq_length, game_data)
+                    prob_objects.append(softmax)
+
             # Step 2 : clear question after <stop_dialogue>
             full_dialogues, _ = clear_after_stop_dialogue(full_dialogues, self.tokenizer)
             padded_dialogue, seq_length = list_to_padded_tokens(full_dialogues, self.tokenizer)
 
             # Step 3 : Find the object
-            found_object, softmax, id_guess_objects = self.guesser.find_object(sess, padded_dialogue, seq_length, game_data)
+            found_object, _, id_guess_objects = self.guesser.find_object(sess, padded_dialogue, seq_length, game_data)
             score += np.sum(found_object)
 
             if store_games:
-                for d, g, t, f, go in zip(full_dialogues, game_data["raw"], game_data["targets"], found_object, id_guess_objects):
-                    self.storage.append({"dialogue": d, "game": g, "object_id": g.objects[t].id, "success": f, "guess_object_id": g.objects[go].id})
+                prob_objects = np.transpose(prob_objects, axes=[1,0,2])
+                for i, (d, g, t, f, go, po) in enumerate(zip(full_dialogues, game_data["raw"], game_data["targets_index"], found_object, id_guess_objects, prob_objects)):
+                    self.storage.append({"dialogue": d,
+                                         "game": g,
+                                         "object_id": g.objects[t].id,
+                                         "success": f,
+                                         "guess_object_id": g.objects[go].id,
+                                         "prob_objects" : po} )
 
             if len(optimizer) > 0:
                 final_reward = found_object + 0  # +1 if found otherwise 0

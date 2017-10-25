@@ -15,14 +15,14 @@ from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
 from guesswhat.models.guesser.guesser_network import GuesserNetwork
 from guesswhat.models.looper.basic_looper import BasicLooper
 
-from guesswhat.data_provider.guesswhat_dataset import Dataset, dump_samples_into_dataset
+from guesswhat.data_provider.guesswhat_dataset import Dataset
 
 from guesswhat.data_provider.looper_batchifier import LooperBatchifier
 
 from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from generic.utils.config import load_config, get_config_from_xp
 
-from guesswhat.train.utils import test_model
+from guesswhat.train.utils import test_model, compute_qgen_accuracy
 
 
 if __name__ == '__main__':
@@ -41,8 +41,10 @@ if __name__ == '__main__':
     parser.add_argument("-qgen_identifier", type=str, required=True, help='Qgen identifier')
     parser.add_argument("-guesser_identifier", type=str, required=True, help='Guesser identifier')
 
-    # parser.add_argument("-from_checkpoint", type=bool, default=False, help="Start from checkpoint?")
+    # parser.add_argument("-continue_exp", type=bool, default=False, help="Continue previously started experiment?")
     parser.add_argument("-from_checkpoint", type=str, help="Start from checkpoint?")
+    parser.add_argument("-skip_training", type=bool, default=False, help="Start from checkpoint?")
+    parser.add_argument("-evaluate_all", type=bool, default=False, help="Evaluate sampling, greedy and BeamSearc?")
 
     parser.add_argument("-gpu_ratio", type=float, default=0.95, help="How muany GPU ram is required? (ratio)")
     parser.add_argument("-no_thread", type=int, default=1, help="No thread to load batch")
@@ -131,6 +133,10 @@ if __name__ == '__main__':
     batch_size = loop_config['optimizer']['batch_size']
     no_epoch = loop_config["optimizer"]["no_epoch"]
 
+    mode_to_evaluate = ["greedy"]
+    if args.evaluate_all:
+        mode_to_evaluate = ["greedy", "sampling", "beam_search"]
+
     # create a saver to store/load checkpoint
     saver = tf.train.Saver()
 
@@ -145,7 +151,7 @@ if __name__ == '__main__':
         #############################
 
         sess.run(tf.global_variables_initializer())
-        if args.from_checkpoint:
+        if args.from_checkpoint: # TODO only reload qgen ckpt
             # start_epoch = load_checkpoint(sess, saver, args, save_path)
             saver = tf.train.Saver()
             saver.restore(sess, os.path.join(args.networks_dir, 'loop', args.from_checkpoint, 'params.ckpt'))
@@ -179,13 +185,13 @@ if __name__ == '__main__':
                                        qgen=qgen_network,
                                        tokenizer=tokenizer)
 
-        test_iterator = Iterator(testset, pool=cpu_pool,
-                                 batch_size=batch_size,
-                                 batchifier=eval_batchifier,
-                                 shuffle=False,
-                                 use_padding=True)
-        test_score = looper_evaluator.process(sess, test_iterator, mode="sampling")
-        logger.info("Test success ratio (Init-Sampling): {}".format(test_score))
+        compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, evaluator=looper_evaluator, tokenizer=tokenizer,
+                 mode=mode_to_evaluate, save_path=save_path, cpu_pool=cpu_pool, batch_size=batch_size,
+                 dump_suffix="init.new_games")
+
+        if args.skip_training:
+            logger.info("Skip training...")
+            exit(0)
 
         logs = []
         # Start training
@@ -217,31 +223,12 @@ if __name__ == '__main__':
                 final_val_score = val_score
                 loop_saver.save(sess, save_path.format('params.ckpt'))
 
-        logger.info(">>>-------------- FINAL SCORE ---------------------<<<")
+
         # Compute the test score with early stopping
+        logger.info(">>>-------------- FINAL SCORE ---------------------<<<")
         loop_saver.restore(sess, save_path.format('params.ckpt'))
-        test_iterator = Iterator(testset, pool=cpu_pool,
-                                 batch_size=batch_size,
-                                 batchifier=eval_batchifier,
-                                 shuffle=False,
-                                 use_padding=True)
-        test_score = looper_evaluator.process(sess, test_iterator, mode="sampling")
-        logger.info("Test success ratio (sampling): {}".format(test_score))
-
-        test_iterator = Iterator(testset, pool=cpu_pool,
-                                 batch_size=batch_size,
-                                 batchifier=eval_batchifier,
-                                 shuffle=False,
-                                 use_padding=True)
-        test_score = looper_evaluator.process(sess, test_iterator, mode="greedy", store_games=True)
-        logger.info("Test success ratio (greedy): {}".format(test_score))
-
-        # Retrieve the generated games and dump them as a dataset
-        generated_dialogues = looper_evaluator.get_storage()
-        dump_samples_into_dataset(generated_dialogues,
-                                  save_path=save_path,
-                                  tokenizer=tokenizer,
-                                  name="greedy")
-        logger.info("Generated games were dumped...")
-
+        compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, evaluator=looper_evaluator, tokenizer=tokenizer,
+                 mode=mode_to_evaluate, save_path=save_path, cpu_pool=cpu_pool, batch_size=batch_size,
+                 dump_suffix="final.new_games")
         logger.info(">>>------------------------------------------------<<<")
+
