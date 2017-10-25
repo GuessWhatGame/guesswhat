@@ -286,11 +286,6 @@ python src/guesswhat/train/train_qgen_reinforce.py
 
 Detailled accuracies:
 
-Cross-entropy - Sampling: 39.2%
-Cross-entropy - Greedy 40.8%
-Cross-entropy - Beam: 44.6%
-
-
 | New Images| Cross-entropy  | Reinforce |
 | --------  |:-----:|:-----:|
 | Sampling   | 39.2% | 56.5 % |
