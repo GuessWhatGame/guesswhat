@@ -30,7 +30,7 @@ The project is part of the CHISTERA - IGLU Project.
 
 ## Introduction
 
-We introduce \GW, a two-player guessing game as a testbed for research on the interplay of computer vision and dialogue systems. The goal of the game is to locate an unknown object in a rich image scene by asking a sequence of questions.
+We introduce GuessWhat?!, a two-player guessing game as a testbed for research on the interplay of computer vision and dialogue systems. The goal of the game is to locate an unknown object in a rich image scene by asking a sequence of questions.
 Higher-level image understanding, like spatial reasoning and language grounding, is required to solve the proposed task.
 
 ## Installation
@@ -181,9 +181,6 @@ done
 
 Noticeably, one can also extract VGG-fc7 or Resnet features. Please follow the script documentation for more advanced setting.
 
-**WARNING**: During our initial experiments, we use [this implementation](https://github.com/machrisaa/tensorflow-vgg) of VGG.
-We then switch to Tensorflow official pre-trained model, namely slim, to ease code maintenance. It turns out that the extracted vgg features from slim are actually of lower quality than the original one. (Final results are 1 point lower with slim!!!). These [vgg features](www.florian-strub.com/github/ft_vgg_img.zip) are the exact vgg-features we used in our best experiments.
-Yet, if you want to increase the baseline, we strongly recommend you to use ResNet features :) 
 
 #### Create dictionary
 
