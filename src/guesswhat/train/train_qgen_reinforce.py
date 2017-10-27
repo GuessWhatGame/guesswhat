@@ -183,7 +183,6 @@ if __name__ == '__main__':
 
         # Compute the initial scores
         logger.info(">>>-------------- INITIAL SCORE ---------------------<<<")
-        loop_saver.restore(sess, save_path.format('params.ckpt'))
 
         logger.info(">>>  Initial models  <<<")
         test_model(sess, testset, cpu_pool=cpu_pool, tokenizer=tokenizer,
