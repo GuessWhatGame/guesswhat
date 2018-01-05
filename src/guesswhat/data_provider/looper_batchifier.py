@@ -11,9 +11,8 @@ from generic.data_provider.nlp_utils import padder, padder_3d
 
 class LooperBatchifier(AbstractBatchifier):
 
-    def __init__(self, tokenizer, sources, generate_new_games, **kwargs):
+    def __init__(self, tokenizer, generate_new_games, **kwargs):
         self.tokenizer = tokenizer
-        self.sources = sources
         self.generate_new_games = generate_new_games
         self.kwargs = kwargs
 

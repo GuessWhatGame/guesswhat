@@ -36,5 +36,38 @@ class OracleWrapper(object):
 
 
 
+class OracleUserWrapper(object):
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def initialize(self, sess):
+        pass
 
 
+    def answer_question(self, sess, question, **_):
+
+        # Discard question if it contains the stop dialogue token
+        if self.tokenizer.stop_dialogue in question[0]:
+            return [self.tokenizer.non_applicable_token]
+
+        print()
+        print("Q :", self.tokenizer.decode(question[0]))
+
+        while True:
+            answer = input('A (Yes,No,N/A): ').lower()
+            if answer == "y" or answer == "yes":
+                token = self.tokenizer.yes_token
+                break
+
+            elif answer == "n" or answer == "no":
+                token = self.tokenizer.no_token
+                break
+
+            elif answer == "na" or answer == "n/a" or answer == "not applicable":
+                token = self.tokenizer.non_applicable_token
+                break
+
+            else:
+                print("Invalid answer...")
+
+        return [token]

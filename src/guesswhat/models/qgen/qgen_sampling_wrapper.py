@@ -16,7 +16,7 @@ class QGenSamplingWrapper(object):
         self.qgen = qgen
 
         self.tokenizer = tokenizer
-        self.max_length=max_length
+        self.max_length = max_length
 
         self.evaluator = None
 

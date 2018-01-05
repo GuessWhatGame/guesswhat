@@ -1,7 +1,8 @@
+import numpy as np
+import re
+
 from guesswhat.models.qgen.qgen_sampling_wrapper import QGenSamplingWrapper
 from guesswhat.models.qgen.qgen_beamsearch_wrapper import QGenBSWrapper
-
-
 
 # This is very ugly code that must be refactored.
 # To avoid breaking future code, we hide the implementation behind this Decorator
@@ -33,3 +34,39 @@ class QGenWrapper(object):
             return self.bs_wrapper.sample_next_question(sess, prev_answers, game_data)
         else:
             assert False, "Invalid samppling mode: {}".format(mode)
+
+
+class QGenUserWrapper(object):
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+
+    def initialize(self, sess):
+        pass
+
+    def reset(self, batch_size):
+        pass
+
+    def sample_next_question(self, _, prev_answers, game_data, **__):
+
+        if prev_answers[0] == self.tokenizer.start_token:
+            print("Type the character '(S)top' when you want to guess the object")
+        else:
+            print("A :", self.tokenizer.decode(prev_answers[0]))
+
+        print()
+        while True:
+            question = input('Q: ')
+            if question != "":
+                break
+
+        # Stop the dialogue
+        if question == "S" or question == "Stop":
+            tokens = [self.tokenizer.stop_dialogue]
+
+        # Stop the question (add stop token)
+        else:
+            question = re.sub('\?', '', question) # remove question tags if exist
+            question +=  " ?"
+            tokens = self.tokenizer.apply(question)
+
+        return [tokens], np.array([tokens]), [len(tokens)]

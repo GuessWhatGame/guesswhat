@@ -1,6 +1,11 @@
 import gzip
 import json
 import copy
+import os
+
+from PIL import ImageFont, ImageDraw
+from PIL import Image as PImage
+
 
 from generic.data_provider.dataset import AbstractDataset
 
@@ -47,6 +52,24 @@ class Game:
         self.answers = [qa['answer'] for qa in qas]
         self.status = status
 
+    def show(self, img_raw_dir, display_index=False, display_mask=False):
+            image_path = os.path.join(img_raw_dir, self.image.filename)
+
+            img = PImage.open(image_path)
+            draw = ImageDraw.Draw(img)
+
+            for i, obj in enumerate(self.objects):
+                if display_index:
+                    draw.text((obj.bbox.x_center, self.image.height-obj.bbox.y_center), str(i))
+                if display_mask:
+                    print("Show mask: Not yet implemented... sry")
+
+            img.show()
+
+
+
+
+
 
 class Image:
     def __init__(self, id, width, height, url, which_set, image_builder=None):
@@ -57,8 +80,8 @@ class Image:
 
         self.image_loader = None
         if image_builder is not None:
-            filename = "{}.jpg".format(id)
-            self.image_loader = image_builder.build(id, which_set=which_set, filename=filename, optional=False)
+            self.filename = "{}.jpg".format(id)
+            self.image_loader = image_builder.build(id, which_set=which_set, filename=self.filename, optional=False)
 
     def get_image(self, **kwargs):
         if self.image_loader is not None:
@@ -83,6 +106,10 @@ class Bbox:
 
         self.coco_bbox = bbox
 
+    def __str__(self):
+        return "center : {0:5.2f}/{1:5.2f} - size: {2:5.2f}/{3:5.2f}"\
+            .format(self.x_center, self.y_center, self.x_width, self.y_height)
+
 
 class Object:
     def __init__(self, id, category, category_id, bbox, area, segment, crop_builder, image, which_set):
@@ -92,7 +119,7 @@ class Object:
         self.bbox = bbox
         self.area = area
         self.segment = segment
-
+ 
         # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/mask.py
         # self.rle_mask = None
         # if use_coco:
@@ -140,7 +167,7 @@ class Dataset(AbstractDataset):
 
                 games.append(g)
 
-                # if len(games) > 200: break
+                #if len(games) > 200: break
 
         super(Dataset, self).__init__(games)
 

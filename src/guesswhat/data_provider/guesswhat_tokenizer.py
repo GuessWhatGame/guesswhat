@@ -48,4 +48,29 @@ class GWTokenizer:
     def decode(self, tokens):
         return ' '.join([self.i2word[tok] for tok in tokens])
 
+    def split_questions(self, dialogue_tokens):
+
+        qas = []
+        qa = []
+        for token in dialogue_tokens:
+
+            assert token != self.padding_token, "Unexpected padding token"
+
+            # check for end of dialogues
+            if token == self.stop_dialogue:
+                break
+
+            if token == self.start_token:
+                continue
+
+            qa.append(token)
+
+            # check for end of question
+            if token in self.answers:
+                qas.append(qa)
+                qa = []
+
+        return qas
+
+
 

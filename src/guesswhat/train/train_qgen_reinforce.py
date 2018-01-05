@@ -9,18 +9,20 @@ from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
 from generic.data_provider.image_loader import get_img_builder
+from generic.utils.config import load_config, get_config_from_xp
 
 from guesswhat.models.oracle.oracle_network import OracleNetwork
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
 from guesswhat.models.guesser.guesser_network import GuesserNetwork
 from guesswhat.models.looper.basic_looper import BasicLooper
 
+from guesswhat.models.qgen.qgen_wrapper import QGenWrapper
+from guesswhat.models.oracle.oracle_wrapper import OracleWrapper
+from guesswhat.models.guesser.guesser_wrapper import GuesserWrapper
+
 from guesswhat.data_provider.guesswhat_dataset import Dataset
-
 from guesswhat.data_provider.looper_batchifier import LooperBatchifier
-
 from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
-from generic.utils.config import load_config, get_config_from_xp
 
 from guesswhat.train.utils import test_model, compute_qgen_accuracy
 
@@ -41,8 +43,8 @@ if __name__ == '__main__':
     parser.add_argument("-qgen_identifier", type=str, required=True, help='Qgen identifier')
     parser.add_argument("-guesser_identifier", type=str, required=True, help='Guesser identifier')
 
-    # parser.add_argument("-continue_exp", type=bool, default=False, help="Continue previously started experiment?")
-    parser.add_argument("-from_checkpoint", type=str, help="Start from checkpoint?")
+    parser.add_argument("-continue_exp", type=bool, default=True, help="Continue previously started experiment?")
+    #parser.add_argument("-from_checkpoint", type=str, help="Start from checkpoint?")
     parser.add_argument("-skip_training", type=bool, default=False, help="Start from checkpoint?")
     parser.add_argument("-evaluate_all", type=bool, default=False, help="Evaluate sampling, greedy and BeamSearch?")  #TODO use an input list
     parser.add_argument("-store_games", type=bool, default=True, help="Should we dump the game at evaluation times")
@@ -59,6 +61,7 @@ if __name__ == '__main__':
     oracle_config = get_config_from_xp(os.path.join(args.networks_dir, "oracle"), args.oracle_identifier)
     guesser_config = get_config_from_xp(os.path.join(args.networks_dir, "guesser"), args.guesser_identifier)
     qgen_config = get_config_from_xp(os.path.join(args.networks_dir, "qgen"), args.qgen_identifier)
+
 
     logger = logging.getLogger()
 
@@ -92,7 +95,7 @@ if __name__ == '__main__':
     logger.info('Building networks..')
 
     qgen_network = QGenNetworkLSTM(qgen_config["model"], num_words=tokenizer.no_words, policy_gradient=True)
-    qgen_var = [v for v in tf.global_variables() if "qgen" in v.name and 'rl_baseline' not in v.name]
+    qgen_var = [v for v in tf.global_variables() if "qgen" in v.name] # and 'rl_baseline' not in v.name
     qgen_saver = tf.train.Saver(var_list=qgen_var)
 
     oracle_network = OracleNetwork(oracle_config, num_words=tokenizer.no_words)
@@ -153,15 +156,13 @@ if __name__ == '__main__':
         #############################
 
         sess.run(tf.global_variables_initializer())
-        if args.from_checkpoint: # TODO only reload qgen ckpt
-            # start_epoch = load_checkpoint(sess, saver, args, save_path)
-            saver = tf.train.Saver()
-            saver.restore(sess, os.path.join(args.networks_dir, 'loop', args.from_checkpoint, 'params.ckpt'))
+        if args.continue_exp: # TODO only reload qgen ckpt
+            qgen_saver.restore(sess, save_path.format('params.ckpt'))
         else:
             qgen_saver.restore(sess, os.path.join(args.networks_dir, 'qgen', args.qgen_identifier, 'params.ckpt'))
-            oracle_saver.restore(sess, os.path.join(args.networks_dir, 'oracle', args.oracle_identifier, 'params.ckpt'))
-            guesser_saver.restore(sess, os.path.join(args.networks_dir, 'guesser', args.guesser_identifier, 'params.ckpt'))
 
+        oracle_saver.restore(sess, os.path.join(args.networks_dir, 'oracle', args.oracle_identifier, 'params.ckpt'))
+        guesser_saver.restore(sess, os.path.join(args.networks_dir, 'guesser', args.guesser_identifier, 'params.ckpt'))
 
         # create training tools
         loop_sources = qgen_network.get_sources(sess)
@@ -169,16 +170,24 @@ if __name__ == '__main__':
 
         evaluator = Evaluator(loop_sources, qgen_network.scope_name, network=qgen_network, tokenizer=tokenizer)
 
-        train_batchifier = LooperBatchifier(tokenizer, loop_sources, generate_new_games=True)
-        eval_batchifier = LooperBatchifier(tokenizer, loop_sources, generate_new_games=False)
+        train_batchifier = LooperBatchifier(tokenizer,  generate_new_games=True)
+        eval_batchifier = LooperBatchifier(tokenizer, generate_new_games=False)
 
         # Initialize the looper to eval/train the game-simulation
+
+        oracle_wrapper = OracleWrapper(oracle_network, tokenizer)
+        guesser_wrapper = GuesserWrapper(guesser_network)
         qgen_network.build_sampling_graph(qgen_config["model"], tokenizer=tokenizer, max_length=loop_config['loop']['max_depth'])
+        qgen_wrapper = QGenWrapper(qgen_network, tokenizer,
+                                   max_length=loop_config['loop']['max_depth'],
+                                   k_best=loop_config['loop']['beam_k_best'])
+
         looper_evaluator = BasicLooper(loop_config,
-                                       oracle=oracle_network,
-                                       guesser=guesser_network,
-                                       qgen=qgen_network,
-                                       tokenizer=tokenizer)
+                                       oracle_wrapper=oracle_wrapper,
+                                       guesser_wrapper=guesser_wrapper,
+                                       qgen_wrapper=qgen_wrapper,
+                                       tokenizer=tokenizer,
+                                       batch_size=loop_config["optimizer"]["batch_size"])
 
 
         # Compute the initial scores

@@ -46,7 +46,7 @@ class QGenBSWrapper(object):
         self.qgen = qgen
 
         self.tokenizer = tokenizer
-        self.max_length=max_length
+        self.max_length = max_length
         self.k_best = k_best
 
         self.beam = None
