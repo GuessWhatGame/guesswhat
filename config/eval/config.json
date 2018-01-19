@@ -1,0 +1,17 @@
+{
+
+  "loop": {
+    "max_question": 5,
+    "max_depth" : 12,
+    "beam_k_best" : 20
+  },
+
+  "image": {
+      "image_input": "fc8",
+      "dim": [1000]
+  },
+
+
+  "seed": -1
+
+}
