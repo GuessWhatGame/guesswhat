@@ -9,4 +9,4 @@
 	url = https://github.com/GuessWhatGame/neural_toolbox
 [submodule "src/cocoapi"]
 	path = src/cocoapi
-	url = git@github.com:GuessWhatGame/cocoapi.git
+	url = https://github.com/GuessWhatGame/cocoapi 
