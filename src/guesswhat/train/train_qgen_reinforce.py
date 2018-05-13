@@ -160,7 +160,9 @@ if __name__ == '__main__':
         if args.continue_exp: # TODO only reload qgen ckpt
             qgen_saver.restore(sess, save_path.format('params.ckpt'))
         else:
-            qgen_saver.restore(sess, os.path.join(args.networks_dir, 'qgen', args.qgen_identifier, 'params.ckpt'))
+            qgen_var_supervized = [v for v in tf.global_variables() if "qgen" in v.name and 'rl_baseline' not in v.name] 
+            qgen_loader_supervized = tf.train.Saver(var_list=qgen_var_supervized)
+            qgen_loader_supervized.restore(sess, os.path.join(args.networks_dir, 'qgen', args.qgen_identifier, 'params.ckpt'))
 
         oracle_saver.restore(sess, os.path.join(args.networks_dir, 'oracle', args.oracle_identifier, 'params.ckpt'))
         guesser_saver.restore(sess, os.path.join(args.networks_dir, 'guesser', args.guesser_identifier, 'params.ckpt'))
