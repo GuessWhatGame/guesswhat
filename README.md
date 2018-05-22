@@ -135,6 +135,33 @@ Pretrained networks can be downloaded here:
  
 Note that the reported results comes from the first version of pre-trained networks.
 
+### Install inside docker
+
+This project can be installed in a docker container.
+From the root of this recursively cloned repository run:
+```
+sudo docker build -t guesswhat .
+```
+
+To launch a jupyter notebook:
+```
+sudo docker run -p 8888:8888 guesswhat
+```
+
+To evaluate the pretrained networks:
+```
+sudo docker run -i guesswhat python src/guesswhat/eval/interactive_dialogue.py \
+    -data_dir data \
+    -img_dir data/img/ft_vgg_img \
+    -crop_dir data/img/ft_vgg_crop \
+    -exp_dir out \
+    -config config/eval/config.json \
+    -networks_dir out \
+    -qgen_identifier 867d59b933a89f4525b189da9d67f17b \
+    -oracle_identifier 156cb3d352b97ba12ffd6cf547281ae2 \
+    -dict_file dict.json
+```
+
 ## Reproducing results
 
 To launch the experiments in the local directory, you first have to set the pyhton path:
