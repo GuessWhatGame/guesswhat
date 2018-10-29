@@ -8,7 +8,7 @@ The code was equally developed bu Florian Strub (University of Lille) and Harm d
 
 The project is part of the CHISTERA - IGLU Project.
 
-**WARNING: After refactoring the code of the original paper, we fixed a bug in the codebase (the last generated question was ignored in some case). New scores greatly are above the scores reported in [1] but some results analysis are now obsolete (qgen stop learning to stop, greedy has the highest accuracy). We apologize for the inconvenience.**
+**WARNING: After refactoring the code of the original paper, we fixed a bug in the codebase (the last generated question was ignored in some cases). New scores are greatly above the scores reported in [1] but some results analysis are now obsolete (qgen stop learning to stop, greedy has the highest accuracy). We apologize for the inconvenience.**
 
 
 #### Summary:
