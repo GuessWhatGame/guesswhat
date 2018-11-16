@@ -4,7 +4,7 @@ This repo aims at reproducing the results from the series of GuessWhat?! papers,
 - GuessWhat?! Visual object discovery through multi-modal dialogue [1] https://arxiv.org/abs/1611.08481
 - End-to-end optimization of goal-driven and visually grounded dialogue systems [2] - https://arxiv.org/abs/1703.05423
 
-The code was equally developed bu Florian Strub (University of Lille) and Harm de Vries (University of Montreal)
+The code was equally developed by Florian Strub (University of Lille) and Harm de Vries (University of Montreal)
 
 The project is part of the CHISTERA - IGLU Project.
 
