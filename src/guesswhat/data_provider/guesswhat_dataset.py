@@ -2,14 +2,12 @@ import gzip
 import json
 import copy
 import os
-
-from PIL import ImageFont, ImageDraw
-from PIL import Image as PImage
-
+import numpy as np
+import PIL.Image as PImage
+from PIL import ImageDraw
 
 from generic.data_provider.dataset import AbstractDataset
 
-# TODO find a cleaner way!
 try:
     import cocoapi.PythonAPI.pycocotools.mask as cocoapi
     use_coco = True
@@ -52,6 +50,8 @@ class Game:
         self.answers = [qa['answer'] for qa in qas]
         self.status = status
 
+        self.is_full_dialogue = True
+
     def show(self, img_raw_dir, display_index=False, display_mask=False):
             image_path = os.path.join(img_raw_dir, self.image.filename)
 
@@ -65,11 +65,6 @@ class Game:
                     print("Show mask: Not yet implemented... sry")
 
             img.show()
-
-
-
-
-
 
 class Image:
     def __init__(self, id, width, height, url, which_set, image_builder=None):
@@ -101,8 +96,8 @@ class Bbox:
         self.y_upper = im_height - bbox[1]
         self.y_lower = self.y_upper - self.y_height
 
-        self.x_center = self.x_left + 0.5*self.x_width
-        self.y_center = self.y_lower + 0.5*self.y_height
+        self.x_center = self.x_left + 0.5 * self.x_width
+        self.y_center = self.y_lower + 0.5 * self.y_height
 
         self.coco_bbox = bbox
 
@@ -121,32 +116,39 @@ class Object:
         self.segment = segment
  
         # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/mask.py
-        # self.rle_mask = None
-        # if use_coco:
-        #     self.rle_mask = cocoapi.frPyObjects(self.segment,
-        #                                         h=image.height,
-        #                                         w=image.width)
+        self.rle_mask = None
+        if use_coco:
+            self.rle_mask = cocoapi.frPyObjects(self.segment,
+                                                h=image.height,
+                                                w=image.width)
 
         if crop_builder is not None:
             filename = "{}.jpg".format(image.id)
             self.crop_loader = crop_builder.build(id, filename=filename, which_set=which_set, bbox=bbox)
+            self.crop_scale = crop_builder.scale
 
-    # def get_mask(self):
-    #     assert self.rle_mask is not None, "Mask option are not available, please compile and link cocoapi (cf. cocoapi/PythonAPI/setup.py)"
-    #     return cocoapi.decode(self.rle_mask)
+    def get_mask(self):
+        assert self.rle_mask is not None, "Mask option are not available, please compile and link cocoapi (cf. cocoapi/PythonAPI/setup.py)"
+        tmp_mask = cocoapi.decode(self.rle_mask)
+        if len(tmp_mask.shape) > 2:  # concatenate several mask into a single one
+            tmp_mask = np.sum(tmp_mask, axis=2)
+            tmp_mask[tmp_mask > 1] = 1
+
+        return tmp_mask.astype(np.float32)
 
     def get_crop(self, **kwargs):
         assert self.crop_loader is not None, "Invalid crop loader"
         return self.crop_loader.get_image(**kwargs)
 
 
-
-
 class Dataset(AbstractDataset):
     """Loads the dataset."""
-    def __init__(self, folder, which_set, image_builder=None, crop_builder=None):
+    def __init__(self, folder, which_set, image_builder=None, crop_builder=None, games_to_load=float("inf")):
         file = '{}/guesswhat.{}.jsonl.gz'.format(folder, which_set)
         games = []
+
+        if games_to_load is None:
+            games_to_load = float("inf")
 
         self.set = which_set
 
@@ -167,8 +169,11 @@ class Dataset(AbstractDataset):
 
                 games.append(g)
 
-                #if len(games) > 200: break
+                # If no_games_to_load is defined : Loading a certain number of games
+                if len(games) >= games_to_load:
+                    break
 
+        print("{} games were loaded...".format(len(games) ))
         super(Dataset, self).__init__(games)
 
 
@@ -202,25 +207,33 @@ class CropDataset(AbstractDataset):
     """
     Each game contains no question/answers but a new object
     """
-    def __init__(self, dataset):
+
+    def __init__(self, dataset, expand_objects):
         old_games = dataset.get_data()
         new_games = []
+
         for g in old_games:
-            new_games += self.split(g)
+            if expand_objects:
+                new_games += self.split(g)
+            else:
+                new_games += self.update_ref(g)
         super(CropDataset, self).__init__(new_games)
 
     @classmethod
-    def load(cls, folder, which_set, image_builder=None, crop_builder=None):
-        return cls(Dataset(folder, which_set, image_builder, crop_builder))
+    def load(cls, folder, which_set, image_builder=None, crop_builder=None, expand_objects=False):
+        return CropDataset(Dataset(folder, which_set, image_builder, crop_builder), expand_objects=expand_objects)
 
     def split(self, game):
         games = []
         for obj in game.objects:
             new_game = copy.copy(game)
-            new_game.questions = []
-            new_game.question_ids = []
-            new_game.answers = []
+            new_game.questions = [""]
+            new_game.question_ids = [0]
+            new_game.answers = [""]
             new_game.object_id = obj.id
+
+            # update object reference
+            new_game.object = [o for o in game.objects if o.id == obj.id][0]
 
             # Hack the image id to differentiate objects
             new_game.image = copy.copy(game.image)
@@ -230,11 +243,23 @@ class CropDataset(AbstractDataset):
 
         return games
 
+    def update_ref(self, game):
 
-def dump_samples_into_dataset(data, save_path, tokenizer, name="model"):
+        new_game = copy.copy(game)
+        new_game.questions = [""]
+        new_game.question_ids = [0]
+        new_game.answers = [""]
 
+        # Hack the image id to differentiate objects
+        new_game.image = copy.copy(game.image)
+        new_game.image.id = game.object_id
+
+        return [new_game]
+
+
+def dump_samples_into_dataset(data, save_path, tokenizer, name="model", true_id=False):
     with gzip.open(save_path.format('guesswhat.' + name + '.jsonl.gz'), 'wb') as f:
-        for id_game, d in enumerate(data):
+        for _, d in enumerate(data):
             dialogue = d["dialogue"]
             game = d["game"]
             object_id = d["object_id"]
@@ -245,25 +270,25 @@ def dump_samples_into_dataset(data, save_path, tokenizer, name="model"):
             sample = {}
 
             qas = []
-            start  = 1
+            start = 1
             for k, word in enumerate(dialogue):
                 if word == tokenizer.yes_token or \
-                                word == tokenizer.no_token or \
-                                word == tokenizer.non_applicable_token:
+                        word == tokenizer.no_token or \
+                        word == tokenizer.non_applicable_token:
                     q = tokenizer.decode(dialogue[start:k - 1])
                     a = tokenizer.decode([dialogue[k]])
 
-                    prob_obj = list(prob_objects[len(qas),:len(game.objects)])
-                    prob_obj = [str(round(p,3)) for p in prob_obj] # decimal are not supported y default in json encoder
+                    prob_obj = list(prob_objects[len(qas), :len(game.objects)])
+                    prob_obj = [str(round(p, 3)) for p in prob_obj]  # decimal are not supported y default in json encoder
 
                     qas.append({"question": q,
                                 "answer": a[1:-1],
-                                "id":0,
+                                "id": k,
                                 "p": prob_obj})
 
                     start = k + 1
 
-            sample["id"] = id_game
+            sample["id"] = game.dialogue_id if true_id else 0
             sample["qas"] = qas
             sample["image"] = {
                 "id": game.image.id,
@@ -277,12 +302,51 @@ def dump_samples_into_dataset(data, save_path, tokenizer, name="model"):
                                   "category": o.category,
                                   "area": o.area,
                                   "bbox": o.bbox.coco_bbox,
-                                  "segment" : [], #no segment to avoid making the file to big
+                                  "segment": [],  # no segment to avoid making the file to big
                                   } for o in game.objects]
 
             sample["object_id"] = object_id
             sample["guess_object_id"] = guess_object_id
             sample["status"] = "success" if success else "failure"
+
+            f.write(str(json.dumps(sample)).encode())
+            f.write(b'\n')
+
+
+def dump_oracle(oracle_data, games, save_path, name="oracle"):
+    with gzip.open(save_path.format('guesswhat.' + name + '.jsonl.gz'), 'wb') as f:
+        for game in games:
+
+            qas = oracle_data[game.dialogue_id]
+            sample = {}
+
+            # check that question/answer are correctly sorted
+            for qa, q_id in zip(qas, game.question_ids):
+                assert qa["id"] == q_id
+
+            for qo, qh in zip(qas, game.questions):
+                assert qo["question"] == qh, "{} vs {}".format(qo, qh)
+
+            sample["id"] = game.dialogue_id
+            sample["qas"] = qas
+            sample["image"] = {
+                "id": game.image.id,
+                "width": game.image.width,
+                "height": game.image.height,
+                "coco_url": game.image.url
+            }
+
+            sample["objects"] = [{"id": o.id,
+                                  "category_id": o.category_id,
+                                  "category": o.category,
+                                  "area": o.area,
+                                  "bbox": o.bbox.coco_bbox,
+                                  "segment": o.segment,
+                                  } for o in game.objects]
+
+            sample["object_id"] = game.object_id
+            sample["guess_object_id"] = game.object_id
+            sample["status"] = game.status
 
             f.write(str(json.dumps(sample)).encode())
             f.write(b'\n')
