@@ -11,7 +11,7 @@ from generic.data_provider.iterator import BasicIterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.data_provider.image_loader import get_img_builder
 
-from guesswhat.models.oracle.oracle_network import OracleNetwork
+from guesswhat.models.oracle.oracle_baseline import OracleNetwork
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
 from guesswhat.models.guesser.guesser_network import GuesserNetwork
 from guesswhat.models.looper.basic_looper import BasicLooper

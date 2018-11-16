@@ -12,7 +12,7 @@ from generic.tf_utils.optimizer import create_optimizer
 from generic.data_provider.image_loader import get_img_builder
 from generic.utils.config import load_config, get_config_from_xp
 
-from guesswhat.models.oracle.oracle_network import OracleNetwork
+from guesswhat.models.oracle.oracle_baseline import OracleNetwork
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
 from guesswhat.models.guesser.guesser_network import GuesserNetwork
 from guesswhat.models.looper.basic_looper import BasicLooper
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     qgen_var = [v for v in tf.global_variables() if "qgen" in v.name] # and 'rl_baseline' not in v.name
     qgen_saver = tf.train.Saver(var_list=qgen_var)
 
-    oracle_network = OracleNetwork(oracle_config, num_words=tokenizer.no_words)
+    oracle_network = OracleNetwork(oracle_config, num_words=tokenizer.no_words, num_answers=3)
     oracle_var = [v for v in tf.global_variables() if "oracle" in v.name]
     oracle_saver = tf.train.Saver(var_list=oracle_var)
 
