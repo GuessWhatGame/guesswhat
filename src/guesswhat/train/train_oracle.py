@@ -1,7 +1,6 @@
 import argparse
 import logging
 import os
-import collections
 
 from multiprocessing import Pool
 from distutils.util import strtobool
@@ -11,9 +10,8 @@ import tensorflow as tf
 from generic.data_provider.iterator import Iterator
 from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
-from generic.tf_utils.ckpt_loader import load_checkpoint, create_resnet_saver
+from generic.tf_utils.ckpt_loader import create_resnet_saver
 from generic.utils.config import load_config
-from generic.utils.file_handlers import pickle_dump
 from generic.data_provider.image_loader import get_img_builder
 from generic.data_provider.nlp_utils import GloveEmbeddings
 from generic.utils.thread_pool import create_cpu_pool
@@ -49,7 +47,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    config, exp_identifier, save_path = load_config(args.config, args.out_dir)
+    config, xp_manager = load_config(args)
     logger = logging.getLogger()
 
     # Load config
@@ -65,7 +63,7 @@ if __name__ == '__main__':
 
     # Load image
     image_builder, crop_builder = None, None
-    use_resnet, use_process = False, False
+    use_resnet = False
     if config["model"]['inputs'].get('image', False):
         logger.info('Loading images..')
         image_builder = get_img_builder(config['model']['image'], args.img_dir)
@@ -126,10 +124,11 @@ if __name__ == '__main__':
             resnet_version = config['model']["image"]['resnet_version']
             resnet_saver.restore(sess, os.path.join(args.data_dir, 'resnet_v1_{}.ckpt'.format(resnet_version)))
 
-        start_epoch = load_checkpoint(sess, saver, args, save_path)
-
-        best_val_acc = 0
-        best_train_acc = None
+        sess.run(tf.global_variables_initializer())
+        if args.continue_exp or args.load_checkpoint is not None:
+            start_epoch, _ = xp_manager.load_checkpoint(sess, saver)
+        else:
+            start_epoch = 0
 
         # create training tools
         evaluator = Evaluator(sources, network.scope_name, network=network, tokenizer=tokenizer)
@@ -140,7 +139,7 @@ if __name__ == '__main__':
             logger.info('Epoch {}..'.format(t + 1))
 
             # Create cpu pools (at each iteration otherwise threads may become zombie - python bug)
-            cpu_pool = create_cpu_pool(args.no_thread, use_process=use_process)
+            cpu_pool = create_cpu_pool(args.no_thread, use_process=image_builder.require_multiprocess())
 
             train_iterator = Iterator(trainset,
                                       batch_size=batch_size, pool=cpu_pool,
@@ -159,22 +158,23 @@ if __name__ == '__main__':
             logger.info("Validation loss : {}".format(valid_loss))
             logger.info("Validation error: {}".format(1-valid_accuracy))
 
-            if valid_accuracy > best_val_acc:
-                best_train_acc = train_accuracy
-                best_val_acc = valid_accuracy
-                saver.save(sess, save_path.format('params.ckpt'))
-                logger.info("Oracle checkpoint saved...")
-
-                pickle_dump({'epoch': t}, save_path.format('status.pkl'))
+            xp_manager.save_checkpoint(sess, saver,
+                                       epoch=t,
+                                       train_loss=train_loss,
+                                       valid_loss=valid_loss,
+                                       extra_losses=dict(
+                                           train_accuracy=train_accuracy,
+                                           valid_accuracy=valid_accuracy,
+                                       ))
 
         # Load early stopping
-        saver.restore(sess, save_path.format('params.ckpt'))
+        xp_manager.load_checkpoint(sess, saver, load_best=True)
+        cpu_pool = create_cpu_pool(args.no_thread, use_process=False)
 
-        # Create     Listener
+        # Create Listener
         oracle_listener = OracleListener(tokenizer=tokenizer, require=network.prediction)
-        # batchifier.status = ["success", "failure", "incomplete"]
+        batchifier.status = ["success", "failure", "incomplete"]
 
-        cpu_pool = create_cpu_pool(args.no_thread, use_process=use_process)
         test_iterator = Iterator(testset, pool=cpu_pool,
                                  batch_size=batch_size*2,
                                  batchifier=batchifier,
@@ -183,3 +183,12 @@ if __name__ == '__main__':
 
         logger.info("Testing loss: {}".format(test_loss))
         logger.info("Testing error: {}".format(1-test_accuracy))
+
+        # Save the test scores
+        xp_manager.update_user_data(
+            user_data={
+                "test_loss": test_loss,
+                "test_accuracy": test_accuracy,
+            }
+        )
+

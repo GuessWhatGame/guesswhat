@@ -84,7 +84,7 @@ class BasicLooper(object):
 
             if store_games:
                 prob_objects = np.transpose(prob_objects, axes=[1,0,2])
-                for i, (d, g, t, f, go, po) in enumerate(zip(full_dialogues, game_data["raw"], game_data["targets_index"], found_object, id_guess_objects, prob_objects)):
+                for i, (d, g, t, f, go, po) in enumerate(zip(full_dialogues, game_data["raw"], game_data["target_index"], found_object, id_guess_objects, prob_objects)):
                     self.storage.append({"dialogue": d,
                                          "game": g,
                                          "object_id": g.objects[t].id,

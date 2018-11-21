@@ -5,6 +5,7 @@ import neural_toolbox.ft_utils as ft_utils
 import neural_toolbox.rnn as rnn
 
 from generic.tf_factory.image_factory import get_image_features
+from generic.tf_factory.attention_factory import get_attention
 from generic.tf_utils.abstract_network import ResnetModel
 from generic.utils.config import get_recursively
 
@@ -21,7 +22,7 @@ class FiLM_Oracle(ResnetModel):
             self.batch_size = None
             self._is_training = tf.placeholder(tf.bool, name="is_training")
 
-            dropout_keep_scalar = float(config.get("dropout_keep_prob", 1.0))
+            dropout_keep_scalar = float(config["dropout_keep_prob"])
             dropout_keep = tf.cond(self._is_training,
                                    lambda: tf.constant(dropout_keep_scalar),
                                    lambda: tf.constant(1.0))
@@ -49,17 +50,15 @@ class FiLM_Oracle(ResnetModel):
             self.rnn_states, self.last_rnn_states = rnn.rnn_factory(
                 inputs=word_emb,
                 seq_length=self._seq_length,
+                cell=config["question"]["cell"],
                 num_hidden=config["question"]["rnn_state_size"],
                 bidirectional=config["question"]["bidirectional"],
                 max_pool=config["question"]["max_pool"],
                 layer_norm=config["question"]["layer_norm"],
                 reuse=reuse)
 
-            self.last_rnn_states = tf.nn.dropout(self.last_rnn_states, dropout_keep)
-            self.rnn_states = tf.nn.dropout(self.rnn_states, dropout_keep)  # Note that the last_states may have a different dropout... TODO: study impact
-
             #####################
-            #   ORACLE SIDE INPUTS
+            #   SIDE INPUTS
             #####################
 
             # Category
@@ -79,167 +78,100 @@ class FiLM_Oracle(ResnetModel):
             # Spatial
             if any(get_recursively(config, "spatial", no_field_recursive=True)):
                 self._spatial = tf.placeholder(tf.float32, [self.batch_size, 8], name='spatial')
-                if config["spatial"]["no_mlp_units"] > 0:
-                    spatial_emb = tfc_layers.fully_connected(self._spatial,
-                                                             num_outputs=config["spatial"]["no_mlp_units"],
-                                                             activation_fn=tf.nn.relu,
-                                                             reuse=reuse,
-                                                             scope="spatial_upsampling")
-                    spatial_emb = tf.nn.dropout(spatial_emb, dropout_keep)
-                else:
-                    spatial_emb = self._spatial
+                spatial_emb = tfc_layers.fully_connected(self._spatial,
+                                                         num_outputs=config["spatial"]["no_mlp_units"],
+                                                         activation_fn=tf.nn.relu,
+                                                         reuse=reuse,
+                                                         scope="spatial_upsampling")
+                spatial_emb = tf.nn.dropout(spatial_emb, dropout_keep)
             else:
                 spatial_emb = None
 
             self.classifier_input = []
 
             #####################
-            #   IMAGES
+            #   IMAGES / CROP
             #####################
 
-            if config["inputs"]["image"]:
+            for visual_str in ["image", "crop"]:
 
-                self._image = tf.placeholder(tf.float32, [self.batch_size] + config['image']["dim"], name='image')
-                with tf.variable_scope("image", reuse=reuse):
-                    self.image_out = get_image_features(
-                        image=self._image, question=self.last_rnn_states,
-                        is_training=self._is_training,
-                        scope_name="image_processing",
-                        config=config['image'],
-                        dropout_keep=dropout_keep
-                    )
+                # Check whether to use the visual input
+                if config["inputs"][visual_str]:
 
-                # apply attention or use vgg features
-                if len(self.image_out.get_shape()) == 2:
-                    self.classifier_input.append(self.image_out)
+                    # Load Image Features
+                    visual_features = tf.placeholder(tf.float32, shape=[self.batch_size] + config[visual_str]["dim"], name=visual_str)
+                    with tf.variable_scope(visual_str, reuse=reuse):
+                        visual_features = get_image_features(image=visual_features,
+                                                             config=config[visual_str],
+                                                             is_training=self._is_training)
 
-                else:
-                    # Compute object mask
-                    self._mask = tf.placeholder(tf.float32, self.image_out.get_shape()[:3], name='img_mask')
-                    self._mask = tf.expand_dims(self._mask, axis=-1)
+                    # Modulate Image Features
+                    if "film_input" in config:
 
-                    self.film_img_input = []
-                    with tf.variable_scope("image_film_input", reuse=reuse):
+                        # Retrieve configuration
+                        film_config = config["film_input"]
+                        block_config = config["film_block"]
 
-                        if config["film_input"]["category"]:
-                            self.film_img_input.append(cat_emb)
+                        # Load object mask
+                        mask = tf.placeholder(tf.float32, visual_features.get_shape()[:3], name='{}_mask'.format(visual_str))
+                        mask = tf.expand_dims(mask, axis=-1)
 
-                        if config["film_input"]["spatial"]:
-                            self.film_img_input.append(spatial_emb)
+                        # Perform the actual modulation
+                        with tf.variable_scope("{}_modulation".format(visual_str)):
 
-                        if config["film_input"]["mask"]:
-                            mask_dim = int(self.image_out.get_shape()[1]) * int(self.image_out.get_shape()[2])
-                            flat_mask = tf.reshape(self._mask, shape=[-1, mask_dim])
-                            self.film_crop_input.append(flat_mask)
+                            extra_context = []
+                            with tf.variable_scope("{}_film_input".format(visual_str), reuse=reuse):
 
-                    with tf.variable_scope("image_reading_cell"):
+                                if film_config["category"]:
+                                    extra_context.append(cat_emb)
 
-                        self.reading_unit = create_reading_unit(last_state=self.last_rnn_states,
-                                                                states=self.rnn_states,
-                                                                seq_length=self._seq_length,
-                                                                config=config["film_input"]["reading_unit"],
-                                                                reuse=reuse)
+                                if film_config["spatial"]:
+                                    extra_context.append(spatial_emb)
 
-                        film_layer_fct = create_film_layer_with_reading_unit(self.reading_unit)
+                                if film_config["mask"]:
+                                    mask_dim = int(visual_features.get_shape()[1]) * int(visual_features.get_shape()[2])
+                                    flat_mask = tf.reshape(mask, shape=[-1, mask_dim])
+                                    extra_context.append(flat_mask)
 
-                    with tf.variable_scope("image_film_stack", reuse=reuse):
+                            with tf.variable_scope("{}_reading_cell".format(visual_str)):
 
-                        def append_extra_features(features, config):
-                            if config["spatial_location"]:  # add the pixel location as two additional feature map
-                                features = ft_utils.append_spatial_location(features)
-                            if config["mask"]:  # add the mask on the object as one additional feature map
-                                features = tf.concat([features, self._mask], axis=3)
-                            return features
+                                reading_unit = create_reading_unit(last_state=self.last_rnn_states,
+                                                                   states=self.rnn_states,
+                                                                   seq_length=self._seq_length,
+                                                                   config=film_config["reading_unit"],
+                                                                   reuse=reuse)
 
-                        self.film_img_stack = FiLM_Stack(image=self.image_out,
-                                                         film_input=self.film_img_input,
-                                                         attention_input=self.last_rnn_states,
-                                                         film_layer_fct=film_layer_fct,
-                                                         is_training=self._is_training,
-                                                         dropout_keep=dropout_keep,
-                                                         config=config["film_block"],
-                                                         append_extra_features=append_extra_features,
-                                                         reuse=reuse)
+                                film_layer_fct = create_film_layer_with_reading_unit(reading_unit)
 
-                        film_img_output = self.film_img_stack.get()
-                        film_img_output = tf.nn.dropout(film_img_output, dropout_keep)
+                            with tf.variable_scope("{}_film_stack".format(visual_str), reuse=reuse):
 
-                        self.classifier_input.append(film_img_output)
+                                def append_extra_features(features, config):
+                                    if config["spatial_location"]:  # add the pixel location as two additional feature map
+                                        features = ft_utils.append_spatial_location(features)
+                                    if config["mask"]:  # add the mask on the object as one additional feature map
+                                        features = tf.concat([features, mask], axis=3)
+                                    return features
 
-            #####################
-            #   CROP
-            #####################
+                                film_stack = FiLM_Stack(image=visual_features,
+                                                        film_input=extra_context,
+                                                        film_layer_fct=film_layer_fct,
+                                                        is_training=self._is_training,
+                                                        config=block_config,
+                                                        append_extra_features=append_extra_features,
+                                                        reuse=reuse)
 
-            if config["inputs"]["crop"]:
+                                visual_features = film_stack.get()
 
-                self._crop = tf.placeholder(tf.float32, [self.batch_size] + config['crop']["dim"], name='crop')
+                    # Pool Image Features
+                    if len(visual_features.get_shape()) > 2:
+                        with tf.variable_scope("{}_pooling".format(visual_str)):
+                            visual_features = get_attention(visual_features, self.last_rnn_states,
+                                                            is_training=self._is_training,
+                                                            config=config["pooling"],
+                                                            dropout_keep=dropout_keep,
+                                                            reuse=reuse)
 
-                with tf.variable_scope("crop_film_input", reuse=reuse):
-                    self.crop_out = get_image_features(
-                        image=self._crop, question=self.last_rnn_states,
-                        is_training=self._is_training,
-                        scope_name="crop_processing",
-                        config=config['crop'],
-                        dropout_keep=dropout_keep
-                    )
-
-                # apply attention or use vgg features
-                if len(self.crop_out.get_shape()) == 2:
-                    self.classifier_input.append(self.crop_out)
-
-                else:
-
-                    self._mask_crop = tf.placeholder(tf.float32, self.crop_out.get_shape()[:3], name='crop_mask')
-                    self._mask_crop = tf.expand_dims(self._mask_crop, axis=-1)
-
-                    self.film_crop_input = []
-                    with tf.variable_scope("crop_film_input", reuse=reuse):
-
-                        if config["film_input"]["category"]:
-                            self.film_crop_input.append(cat_emb)
-
-                        if config["film_input"]["spatial"]:
-                            self.film_crop_input.append(spatial_emb)
-
-                        if config["film_input"]["mask"]:
-                            mask_dim = int(self.crop_out.get_shape()[1]) * int(self.crop_out.get_shape()[2])
-                            flat_mask = tf.reshape(self._mask_crop, shape=[-1, mask_dim])
-                            self.film_crop_input.append(flat_mask)
-
-                        with tf.variable_scope("crop_reading_cell"):
-
-                            self.reading_unit = create_reading_unit(last_state=self.last_rnn_states,
-                                                                    states=self.rnn_states,
-                                                                    seq_length=self._seq_length,
-                                                                    config=config["film_input"]["reading_unit"],
-                                                                    reuse=reuse)
-
-                            film_layer_fct = create_film_layer_with_reading_unit(self.reading_unit)
-
-                    with tf.variable_scope("crop_film_stack", reuse=reuse):
-
-                        def append_extra_features(features, config):
-                            if config["spatial_location"]:  # add the pixel location as two additional feature map
-                                features = ft_utils.append_spatial_location(features)
-                            if config["mask"]:  # add the mask on the object as one additional feature map
-                                features = tf.concat([features, self._mask_crop], axis=3)
-                            return features
-
-                        self.film_crop_stack = FiLM_Stack(image=self.crop_out,
-                                                          film_input=self.film_crop_input,
-                                                          attention_input=self.last_rnn_states,
-                                                          film_layer_fct=film_layer_fct,
-                                                          is_training=self._is_training,
-                                                          dropout_keep=dropout_keep,
-                                                          config=config["film_block"],
-                                                          append_extra_features=append_extra_features,
-                                                          reuse=reuse)
-
-                        film_crop_output = self.film_crop_stack.get()
-                        film_crop_output = tf.nn.dropout(film_crop_output, dropout_keep)
-
-                        self.classifier_input.append(film_crop_output)
-
+                    self.classifier_input.append(visual_features)
 
             #####################
             #   FINAL LAYER
@@ -276,7 +208,7 @@ class FiLM_Oracle(ResnetModel):
             #   Loss
             #####################
 
-            self.cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=self.out, labels=self._answer, name='cross_entropy')
+            self.cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.out, labels=self._answer, name='cross_entropy')
             self.loss = tf.reduce_mean(self.cross_entropy)
 
             self.softmax = tf.nn.softmax(self.out, name='answer_prob')
@@ -302,7 +234,7 @@ class FiLM_Oracle(ResnetModel):
 if __name__ == "__main__":
 
     import json
-    with open("../../../../config/oracle/config.film.json", 'r') as f_config:
+    with open("../../../config/referit/config.2.json", 'r') as f_config:
         config = json.load(f_config)
 
     get_recursively(config, "spatial", no_field_recursive=True)

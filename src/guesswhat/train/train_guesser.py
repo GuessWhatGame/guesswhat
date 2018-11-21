@@ -17,7 +17,7 @@ from generic.data_provider.image_loader import get_img_builder
 from guesswhat.data_provider.guesswhat_dataset import Dataset
 from guesswhat.data_provider.questioner_batchifier import QuestionerBatchifier
 from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
-from guesswhat.models.guesser.guesser_network import GuesserNetwork
+from guesswhat.models.guesser.guesser_baseline import GuesserNetwork
 
 
 if __name__ == '__main__':
@@ -31,13 +31,15 @@ if __name__ == '__main__':
     parser.add_argument("-data_dir", type=str, help="Directory with data")
     parser.add_argument("-exp_dir", type=str, help="Directory in which experiments are stored")
     parser.add_argument("-img_dir", type=str, help='Directory with images')
+    parser.add_argument("-crop_dir", type=str, help='Directory with crops')
     parser.add_argument("-config", type=str, help="Configuration file")
     parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
+    parser.add_argument("-glove_file", type=str, default="glove_dict.pkl", help="Glove file name")
     parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
     parser.add_argument("-continue_exp", lambda x: bool(strtobool(x)), default="False", help="Continue previously started experiment?")
     parser.add_argument("-gpu_ratio", type=float, default=1., help="How many GPU ram is required? (ratio)")
     parser.add_argument("-no_thread", type=int, default=1, help="No thread to load batch")
-
+    parser.add_argument("-no_games_to_load", type=int, help="No games to use during training Default : all")
 
     args = parser.parse_args()
     config, exp_identifier, save_path = load_config(args.config, args.exp_dir)
@@ -145,7 +147,7 @@ if __name__ == '__main__':
         test_iterator = Iterator(testset, pool=cpu_pool,
                                  batch_size=batch_size,
                                  batchifier=batchifier,
-                                 shuffle=True)
+                                 shuffle=False)
         [test_loss, test_accuracy] = evaluator.process(sess, test_iterator, outputs)
 
         logger.info("Testing loss: {}".format(test_loss))

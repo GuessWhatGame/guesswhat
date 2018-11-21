@@ -11,11 +11,10 @@ from itertools import chain
 
 class OracleBatchifier(AbstractBatchifier):
 
-    def __init__(self, tokenizer, sources, split_question=True, glove=None, ignore_NA=False, status=list(), split_mode=BatchifierSplitMode.NoSplit):
+    def __init__(self, tokenizer, sources, glove=None, ignore_NA=False, status=list(), split_mode=BatchifierSplitMode.NoSplit):
         self.tokenizer = tokenizer
         self.sources = sources
         self.status = status
-        self.split_question = split_question
         self.ignore_NA = ignore_NA
         self.glove = glove
         self.split_mode = split_mode
@@ -77,7 +76,7 @@ class OracleBatchifier(AbstractBatchifier):
             if 'image' in sources:
                 batch['image'].append(image.get_image())
 
-            if 'img_mask' in sources:
+            if 'image_mask' in sources:
                 assert "image" in batch, "mask input require the image source"
                 mask = game.object.get_mask()
 
@@ -85,7 +84,7 @@ class OracleBatchifier(AbstractBatchifier):
                                       batch['image'][-1].shape[0]  # Use the image feature size (not the original img size)
 
                 mask = resize_image(Image.fromarray(mask), height=ft_height, width=ft_width)
-                batch['img_mask'].append(np.array(mask))
+                batch['image_mask'].append(np.array(mask))
 
             if 'crop_mask' in sources:
                 assert "crop" in batch, "mask input require the crop source"

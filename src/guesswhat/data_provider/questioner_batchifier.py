@@ -3,31 +3,25 @@ import collections
 
 from generic.data_provider.batchifier import AbstractBatchifier
 
-from generic.data_provider.image_preprocessors import (resize_image, get_spatial_feat,
-                                                         scaled_crop_and_pad)
+from generic.data_provider.image_preprocessors import get_spatial_feat, scale_bbox
 from generic.data_provider.nlp_utils import padder, padder_3d
 
-answer_dict = \
-    {'Yes': np.array([1, 0, 0], dtype=np.int32),
-    'No': np.array([0, 1, 0], dtype=np.int32),
-    'N/A': np.array([0, 0, 1], dtype=np.int32)
-    }
+from itertools import chain
 
 
 class QuestionerBatchifier(AbstractBatchifier):
 
-    def __init__(self, tokenizer, sources, status=list(), **kwargs):
+    def __init__(self, tokenizer, sources, glove=None, status=list()):
         self.tokenizer = tokenizer
         self.sources = sources
+        self.glove = glove
         self.status = status
-        self.kwargs = kwargs
 
     def filter(self, games):
         if len(self.status) > 0:
             return [g for g in games if g.status in self.status]
         else:
             return games
-
 
     def apply(self, games):
 
@@ -40,8 +34,8 @@ class QuestionerBatchifier(AbstractBatchifier):
             batch['raw'].append(game)
 
             # Flattened question answers
-            q_tokens = [self.tokenizer.apply(q) for q in game.questions]
-            a_tokens = [self.tokenizer.apply(a, is_answer=True) for a in game.answers]
+            q_tokens = [self.tokenizer.encode(q) for q in game.questions]
+            a_tokens = [self.tokenizer.encode(a, is_answer=True) for a in game.answers]
 
             tokens = [self.tokenizer.start_token]  # Add start token
             answer_indices = []
@@ -56,19 +50,39 @@ class QuestionerBatchifier(AbstractBatchifier):
 
             tokens += [self.tokenizer.stop_dialogue]  # Add STOP token
 
-            batch["dialogues"].append(tokens)
+            batch["dialogue"].append(tokens)
             all_answer_indices.append(answer_indices)
+
+            if 'glove' in self.sources:
+                questions = []
+                for q, a in zip(game.questions, game.answers):
+                    questions.append(self.tokenizer.tokenize_question(q))
+                    questions.append([self.tokenizer.format_answer(a)])
+                questions = list(chain.from_iterable(questions))
+                glove_vectors = self.glove.get_embeddings(questions)
+
+                # Add start token and end token to glove_embedding (otherwise cannot concatenate word embedding and glove)
+                glove_vectors.insert(0, np.zeros_like(glove_vectors[0]))
+                glove_vectors.append(np.zeros_like(glove_vectors[0]))
+
+                batch['glove'].append(glove_vectors)
 
             # Object embedding
             obj_spats, obj_cats = [], []
             for index, obj in enumerate(game.objects):
-                spatial = get_spatial_feat(obj.bbox, game.image.width, game.image.height)
+
+                bbox = obj.bbox
+                spatial = get_spatial_feat(bbox, game.image.width, game.image.height)
                 category = obj.category_id
 
+                #                    1 point                 width         height
+                bbox_coord = [bbox.x_left, bbox.y_upper, bbox.x_width, bbox.y_height]
+
                 if obj.id == game.object_id:
-                    batch['targets_category'].append(category)
-                    batch['targets_spatial'].append(spatial)
-                    batch['targets_index'].append(index)
+                    batch['target_category'].append(category)
+                    batch['target_spatial'].append(spatial)
+                    batch['target_index'].append(index)
+                    batch['target_bbox'].append(bbox_coord)
 
                 obj_spats.append(spatial)
                 obj_cats.append(category)
@@ -78,14 +92,13 @@ class QuestionerBatchifier(AbstractBatchifier):
             # image
             img = game.image.get_image()
             if img is not None:
-                if "images" not in batch:  # initialize an empty array for better memory consumption
-                    batch["images"] = np.zeros((batch_size,) + img.shape)
-                batch["images"][i] = img
-
+                if "image" not in batch:  # initialize an empty array for better memory consumption
+                    batch["image"] = np.zeros((batch_size,) + img.shape)
+                batch["image"][i] = img
 
         # Pad dialogue tokens tokens
-        batch['dialogues'], batch['seq_length'] = padder(batch['dialogues'], padding_symbol=self.tokenizer.padding_token)
-        seq_length = batch['seq_length']
+        batch['dialogue'], batch['seq_length_dialogue'] = padder(batch['dialogue'], padding_symbol=self.tokenizer.padding_token)
+        seq_length = batch['seq_length_dialogue']
         max_length = max(seq_length)
 
         # Compute the token mask
@@ -101,15 +114,10 @@ class QuestionerBatchifier(AbstractBatchifier):
         # Pad objects
         batch['obj_spats'], obj_length = padder_3d(batch['obj_spats'])
         batch['obj_cats'], obj_length = padder(batch['obj_cats'])
+        batch['obj_seq_length'] = obj_length
 
-        # Compute the object mask
-        max_objects = max(obj_length)
-        batch['obj_mask'] = np.zeros((batch_size, max_objects), dtype=np.float32)
-        for i in range(batch_size):
-            batch['obj_mask'][i, :obj_length[i]] = 1.0
+        if 'glove' in self.sources:
+            # (?, 16, 300)   (batch, max num word, glove emb size)
+            batch['glove'], _ = padder_3d(batch['glove'])
 
         return batch
-
-
-
-

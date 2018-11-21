@@ -14,7 +14,7 @@ from generic.utils.config import load_config, get_config_from_xp
 
 from guesswhat.models.oracle.oracle_baseline import OracleNetwork
 from guesswhat.models.qgen.qgen_lstm_network import QGenNetworkLSTM
-from guesswhat.models.guesser.guesser_network import GuesserNetwork
+from guesswhat.models.guesser.guesser_baseline import GuesserNetwork
 from guesswhat.models.looper.basic_looper import BasicLooper
 
 from guesswhat.models.qgen.qgen_wrapper import QGenWrapper

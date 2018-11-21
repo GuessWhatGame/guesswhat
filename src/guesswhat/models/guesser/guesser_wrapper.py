@@ -19,7 +19,7 @@ class GuesserWrapper(object):
         # sample
         selected_object, softmax = self.evaluator.execute(sess, output=[self.guesser.selected_object, self.guesser.softmax], batch=game_data)
 
-        found = (selected_object == game_data["targets_index"])
+        found = (selected_object == game_data["target_index"])
 
         return found, softmax, selected_object
 
@@ -60,7 +60,7 @@ class GuesserUserWrapper(object):
                 break
 
         # Step 3 : Check guess
-        found = (selected_object == game_data["targets_index"])
+        found = (selected_object == game_data["target_index"])
         softmax = np.zeros(len(objects))
         softmax[selected_object] = 1
 
@@ -68,7 +68,7 @@ class GuesserUserWrapper(object):
             print("Success!")
         else:
             print("Failure :(")
-            print("The correct object was: {}".format(game_data["targets_index"][0]))
+            print("The correct object was: {}".format(game_data["target_index"][0]))
 
         print()
 

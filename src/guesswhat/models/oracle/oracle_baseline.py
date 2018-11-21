@@ -4,20 +4,26 @@ import tensorflow.contrib.layers as tfc_layers
 from neural_toolbox import rnn
 
 from generic.tf_utils.abstract_network import ResnetModel
-from generic.tf_factory.image_factory import get_image_features
-
+from generic.tf_factory.image_factory import get_image_features, get_cbn
+from generic.tf_factory.attention_factory import get_attention
 
 class OracleNetwork(ResnetModel):
 
     def __init__(self, config, num_words, num_answers, device='', reuse=False):
         ResnetModel.__init__(self, "oracle", device=device)
 
-        with tf.variable_scope(self.scope_name, reuse=reuse) as scope:
+        with tf.variable_scope(self.scope_name, reuse=reuse):
             embeddings = []
+
             self.batch_size = None
+            self._is_training = tf.placeholder(tf.bool, name="is_training")
+
+            dropout_keep_scalar = float(config["dropout_keep_prob"])
+            dropout_keep = tf.cond(self._is_training,
+                                   lambda: tf.constant(dropout_keep_scalar),
+                                   lambda: tf.constant(1.0))
 
             # QUESTION
-            self._is_training = tf.placeholder(tf.bool, name="is_training")
             self._question = tf.placeholder(tf.int32, [self.batch_size, None], name='question')
             self._seq_length = tf.placeholder(tf.int32, [self.batch_size], name='seq_length')
 
@@ -32,6 +38,7 @@ class OracleNetwork(ResnetModel):
                                                 cell="lstm",
                                                 num_hidden=config['question']["rnn_units"])
 
+            # Prepare conditional batchnorm
             embeddings.append(last_rnn_state)
 
             # CATEGORY
@@ -55,24 +62,50 @@ class OracleNetwork(ResnetModel):
 
             # IMAGE
             if config['inputs']['image']:
+
                 self._image = tf.placeholder(tf.float32, [self.batch_size] + config['image']["dim"], name='image')
-                self.image_out = get_image_features(
-                    image=self._image, question=last_rnn_state,
-                    is_training=self._is_training,
-                    scope_name=scope.name,
-                    config=config['image'])
+
+                cbn = None
+                if "cbn" in config:
+                    cbn = get_cbn(config["cbn"], last_rnn_state, dropout_keep, self._is_training)
+
+                self.image_out = get_image_features(image=self._image,
+                                                    is_training=self._is_training,
+                                                    config=config['image'],
+                                                    cbn=cbn)
+
+                if len(self.image_out.get_shape()) > 2:
+                    with tf.variable_scope("image_pooling"):
+                        self.image_out = get_attention(self.image_out, last_rnn_state,
+                                                       is_training=self._is_training,
+                                                       config=config["pooling"],
+                                                       dropout_keep=dropout_keep,
+                                                       reuse=reuse)
 
                 embeddings.append(self.image_out)
                 print("Input: Image")
 
             # CROP
             if config['inputs']['crop']:
+
                 self._crop = tf.placeholder(tf.float32, [self.batch_size] + config['crop']["dim"], name='crop')
-                self.crop_out = get_image_features(
-                    image=self._crop, question=last_rnn_state,
-                    is_training=self._is_training,
-                    scope_name=scope.name,
-                    config=config["model"]['crop'])
+
+                cbn = None
+                if "cbn" in config:
+                    cbn = get_cbn(config["cbn"], last_rnn_state, dropout_keep, self._is_training)
+
+                self.crop_out = get_image_features(image=self._crop,
+                                                   is_training=self._is_training,
+                                                   config=config['crop'],
+                                                   cbn=cbn)
+
+                if len(self.image_out.get_shape()) > 2:
+                    with tf.variable_scope("crop_pooling"):
+                        self.image_out = get_attention(self.crop_out, last_rnn_state,
+                                                       is_training=self._is_training,
+                                                       config=config["pooling"],
+                                                       dropout_keep=dropout_keep,
+                                                       reuse=reuse)
 
                 embeddings.append(self.crop_out)
                 print("Input: Crop")

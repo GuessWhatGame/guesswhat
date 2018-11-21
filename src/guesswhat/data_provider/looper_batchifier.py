@@ -59,9 +59,9 @@ class LooperBatchifier(AbstractBatchifier):
             game.object = target_object
             game.object_id = target_object.id
 
-            batch['targets_index'].append(random_index)
-            batch['targets_spatial'].append(obj_spats[random_index])
-            batch['targets_category'].append(obj_cats[random_index])
+            batch['target_index'].append(random_index)
+            batch['target_spatial'].append(obj_spats[random_index])
+            batch['target_category'].append(obj_cats[random_index])
 
             batch['debug'].append((target_object.category, (target_object.bbox.x_center, target_object.bbox.y_center), game.image.url))
 

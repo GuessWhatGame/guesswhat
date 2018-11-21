@@ -1,16 +1,24 @@
 {
-  "inputs": {
-    "question": true,
-    "category": true,
-    "spatial": true,
-    "crop": true,
-    "image": false
-  },
+  "name" : "Baseline",
 
   "model": {
+
+    "type": "baseline",
+
+    "inputs": {
+      "question": true,
+      "category": true,
+      "spatial": true,
+      "crop": true,
+      "image": false
+    },
+
     "question": {
-      "no_LSTM_hiddens": 512,
-      "embedding_dim": 300
+      "input_type": "single_question",
+      "word_embedding_dim": 300,
+      "glove": false,
+      "cell": "lstm",
+      "rnn_units": 512
     },
 
     "category": {
@@ -28,28 +36,27 @@
     },
 
     "crop": {
-
       "image_input": "raw",
-
       "dim": [224, 224, 3],
       "scale" : 1.1,
       "normalize": true,
-
       "resnet_version": 50,
-      "finetune" : [],
+      "finetune" : []
+    },
 
-      "attention" : {
-        "mode": "classic",
-        "no_attention_mlp": 256,
-        "no_glimpses": 2
-      },
+    "cbn": {
+      "use_cbn": true,
+      "cbn_embedding_size": 512,
+      "excluded_scope_names": ["resnet_v1_50/conv1", "shortcut"]
+    },
 
-      "cbn": {
-        "use_cbn": true,
-        "cbn_embedding_size": 512,
-        "excluded_scope_names": ["resnet_v1_50/conv1", "shortcut"]
-      }
-    }
+    "pooling" : {
+      "mode": "glimpse",
+      "no_attention_mlp": 256,
+      "no_glimpses": 1
+    },
+
+    "dropout_keep_prob" : 1.0
 
   },
 
@@ -57,12 +64,18 @@
     "no_epoch": 20,
     "learning_rate": 1e-4,
     "batch_size": 64,
-    "clip_val": 5
+    "clip_val": 5,
+    "weight_decay": 0,
+    "weight_decay_add": [],
+    "weight_decay_remove": []
   },
 
   "status": ["success"],
   "seed": -1
 
 }
+
+
+
 
 

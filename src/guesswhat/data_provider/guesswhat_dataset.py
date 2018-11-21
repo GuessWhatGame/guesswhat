@@ -17,7 +17,7 @@ except ImportError:
     pass
 
 
-class Game:
+class Game(object):
 
     def __init__(self, id, object_id, image, objects, qas, status, which_set, image_builder, crop_builder):
         self.dialogue_id = id
@@ -53,20 +53,21 @@ class Game:
         self.is_full_dialogue = True
 
     def show(self, img_raw_dir, display_index=False, display_mask=False):
-            image_path = os.path.join(img_raw_dir, self.image.filename)
+        image_path = os.path.join(img_raw_dir, self.image.filename)
 
-            img = PImage.open(image_path)
-            draw = ImageDraw.Draw(img)
+        img = PImage.open(image_path)
+        draw = ImageDraw.Draw(img)
 
-            for i, obj in enumerate(self.objects):
-                if display_index:
-                    draw.text((obj.bbox.x_center, self.image.height-obj.bbox.y_center), str(i))
-                if display_mask:
-                    print("Show mask: Not yet implemented... sry")
+        for i, obj in enumerate(self.objects):
+            if display_index:
+                draw.text((obj.bbox.x_center, self.image.height - obj.bbox.y_center), str(i))
+            if display_mask:
+                print("Show mask: Not yet implemented... sry")
 
-            img.show()
+        img.show()
 
-class Image:
+
+class Image(object):
     def __init__(self, id, width, height, url, which_set, image_builder=None):
         self.id = id
         self.width = width
@@ -84,7 +85,8 @@ class Image:
         else:
             return None
 
-class Bbox:
+
+class Bbox(object):
     def __init__(self, bbox, im_width, im_height):
         # Retrieve features (COCO format)
         self.x_width = bbox[2]
@@ -102,11 +104,11 @@ class Bbox:
         self.coco_bbox = bbox
 
     def __str__(self):
-        return "center : {0:5.2f}/{1:5.2f} - size: {2:5.2f}/{3:5.2f}"\
+        return "center : {0:5.2f}/{1:5.2f} - size: {2:5.2f}/{3:5.2f}" \
             .format(self.x_center, self.y_center, self.x_width, self.y_height)
 
 
-class Object:
+class Object(object):
     def __init__(self, id, category, category_id, bbox, area, segment, crop_builder, image, which_set):
         self.id = id
         self.category = category
@@ -114,7 +116,7 @@ class Object:
         self.bbox = bbox
         self.area = area
         self.segment = segment
- 
+
         # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocotools/mask.py
         self.rle_mask = None
         if use_coco:
@@ -143,6 +145,7 @@ class Object:
 
 class Dataset(AbstractDataset):
     """Loads the dataset."""
+
     def __init__(self, folder, which_set, image_builder=None, crop_builder=None, games_to_load=float("inf")):
         file = '{}/guesswhat.{}.jsonl.gz'.format(folder, which_set)
         games = []
@@ -173,34 +176,8 @@ class Dataset(AbstractDataset):
                 if len(games) >= games_to_load:
                     break
 
-        print("{} games were loaded...".format(len(games) ))
+        print("{} games were loaded...".format(len(games)))
         super(Dataset, self).__init__(games)
-
-
-class OracleDataset(AbstractDataset):
-    """
-    Each game contains a single question answer pair
-    """
-    def __init__(self, dataset):
-        old_games = dataset.get_data()
-        new_games = []
-        for g in old_games:
-            new_games += self.split(g)
-        super(OracleDataset, self).__init__(new_games)
-
-    @classmethod
-    def load(cls, folder, which_set, image_builder=None, crop_builder=None):
-        return cls(Dataset(folder, which_set, image_builder, crop_builder))
-
-    def split(self, game):
-        games = []
-        for i, q, a in zip(game.question_ids, game.questions, game.answers):
-            new_game = copy.copy(game)
-            new_game.questions = [q]
-            new_game.question_ids = [i]
-            new_game.answers = [a]
-            games.append(new_game)
-        return games
 
 
 class CropDataset(AbstractDataset):
