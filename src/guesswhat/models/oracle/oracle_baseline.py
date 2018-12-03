@@ -7,6 +7,7 @@ from generic.tf_utils.abstract_network import ResnetModel
 from generic.tf_factory.image_factory import get_image_features, get_cbn
 from generic.tf_factory.attention_factory import get_attention
 
+
 class OracleNetwork(ResnetModel):
 
     def __init__(self, config, num_words, num_answers, device='', reuse=False):
@@ -15,7 +16,7 @@ class OracleNetwork(ResnetModel):
         with tf.variable_scope(self.scope_name, reuse=reuse):
             embeddings = []
 
-            self.batch_size = None
+            batch_size = None
             self._is_training = tf.placeholder(tf.bool, name="is_training")
 
             dropout_keep_scalar = float(config["dropout_keep_prob"])
@@ -24,8 +25,8 @@ class OracleNetwork(ResnetModel):
                                    lambda: tf.constant(1.0))
 
             # QUESTION
-            self._question = tf.placeholder(tf.int32, [self.batch_size, None], name='question')
-            self._seq_length = tf.placeholder(tf.int32, [self.batch_size], name='seq_length')
+            self._question = tf.placeholder(tf.int32, [batch_size, None], name='question')
+            self._seq_length = tf.placeholder(tf.int32, [batch_size], name='seq_length')
 
             word_emb = tfc_layers.embed_sequence(ids=self._question,
                                                  vocab_size=num_words,
@@ -43,7 +44,7 @@ class OracleNetwork(ResnetModel):
 
             # CATEGORY
             if config['inputs']['category']:
-                self._category = tf.placeholder(tf.int32, [self.batch_size], name='category')
+                self._category = tf.placeholder(tf.int32, [batch_size], name='category')
 
                 cat_emb = tfc_layers.embed_sequence(ids=self._category,
                                                     vocab_size=config['category']["n_categories"] + 1,  # we add the unkwown category
@@ -56,14 +57,14 @@ class OracleNetwork(ResnetModel):
 
             # SPATIAL
             if config['inputs']['spatial']:
-                self._spatial = tf.placeholder(tf.float32, [self.batch_size, 8], name='spatial')
+                self._spatial = tf.placeholder(tf.float32, [batch_size, 8], name='spatial')
                 embeddings.append(self._spatial)
                 print("Input: Spatial")
 
             # IMAGE
             if config['inputs']['image']:
 
-                self._image = tf.placeholder(tf.float32, [self.batch_size] + config['image']["dim"], name='image')
+                self._image = tf.placeholder(tf.float32, [batch_size] + config['image']["dim"], name='image')
 
                 cbn = None
                 if "cbn" in config:
@@ -88,7 +89,7 @@ class OracleNetwork(ResnetModel):
             # CROP
             if config['inputs']['crop']:
 
-                self._crop = tf.placeholder(tf.float32, [self.batch_size] + config['crop']["dim"], name='crop')
+                self._crop = tf.placeholder(tf.float32, [batch_size] + config['crop']["dim"], name='crop')
 
                 cbn = None
                 if "cbn" in config:
@@ -114,7 +115,7 @@ class OracleNetwork(ResnetModel):
             emb = tf.concat(embeddings, axis=1)
 
             # OUTPUT
-            self._answer = tf.placeholder(tf.float32, [self.batch_size, num_answers], name='answer')
+            self._answer = tf.placeholder(tf.float32, [batch_size, num_answers], name='answer')
 
             with tf.variable_scope('mlp'):
                 num_hiddens = config['MLP']['num_hiddens']

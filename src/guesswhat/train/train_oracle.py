@@ -2,7 +2,6 @@ import argparse
 import logging
 import os
 
-from multiprocessing import Pool
 from distutils.util import strtobool
 
 import tensorflow as tf
@@ -51,7 +50,6 @@ if __name__ == '__main__':
     logger = logging.getLogger()
 
     # Load config
-    resnet_version = config['model']["image"].get('resnet_version', 50)
     finetune = config["model"]["image"].get('finetune', list())
     split_mode = BatchifierSplitMode.from_string(config["model"]["question"]["input_type"])
     batch_size = config['optimizer']['batch_size']
@@ -106,12 +104,11 @@ if __name__ == '__main__':
     saver = tf.train.Saver()
     resnet_saver = None
 
-    # Retrieve only resnet variabes
+    # Retrieve only resnet variables
     if use_resnet:
         resnet_saver = create_resnet_saver([network])
 
     # CPU/GPU option
-    cpu_pool = Pool(args.no_thread, maxtasksperchild=1000)
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_ratio)
 
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options, allow_soft_placement=True)) as sess:
@@ -126,14 +123,14 @@ if __name__ == '__main__':
 
         sess.run(tf.global_variables_initializer())
         if args.continue_exp or args.load_checkpoint is not None:
-            start_epoch, _ = xp_manager.load_checkpoint(sess, saver)
+            start_epoch = xp_manager.load_checkpoint(sess, saver)
         else:
             start_epoch = 0
 
         # create training tools
         evaluator = Evaluator(sources, network.scope_name, network=network, tokenizer=tokenizer)
-        batchifier = OracleBatchifier(tokenizer, sources, glove=glove, status=config['status'],
-                                      split_mode=split_mode)
+        batchifier = OracleBatchifier(tokenizer, sources, glove=glove, status=config['status'], split_mode=split_mode)
+        xp_manager.configure_score_tracking("valid_accuracy", max_is_best=True)
 
         for t in range(start_epoch, no_epoch):
             logger.info('Epoch {}..'.format(t + 1))
@@ -160,16 +157,16 @@ if __name__ == '__main__':
 
             xp_manager.save_checkpoint(sess, saver,
                                        epoch=t,
-                                       train_loss=train_loss,
-                                       valid_loss=valid_loss,
-                                       extra_losses=dict(
+                                       losses=dict(
+                                           train_loss=train_loss,
+                                           valid_loss=valid_loss,
                                            train_accuracy=train_accuracy,
                                            valid_accuracy=valid_accuracy,
                                        ))
 
         # Load early stopping
         xp_manager.load_checkpoint(sess, saver, load_best=True)
-        cpu_pool = create_cpu_pool(args.no_thread, use_process=False)
+        cpu_pool = create_cpu_pool(args.no_thread, use_process=True)
 
         # Create Listener
         oracle_listener = OracleListener(tokenizer=tokenizer, require=network.prediction)

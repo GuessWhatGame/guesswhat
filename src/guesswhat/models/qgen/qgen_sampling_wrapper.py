@@ -52,7 +52,7 @@ class QGenSamplingWrapper(object):
 
         # Get questions
         padded_questions = transpose_questions.transpose([1, 0])
-        padded_questions = padded_questions[:,1:]  # ignore first token
+        padded_questions = padded_questions[:, 1:]  # ignore first token
 
         for i, l in enumerate(seq_length):
             padded_questions[i, l:] = self.tokenizer.padding_token

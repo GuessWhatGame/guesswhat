@@ -1,9 +1,9 @@
 {
-  "name" : "FiLM",
+  "name" : "Multi-Hop FiLM + (img before)",
 
   "model": {
 
-    "type" : "film",
+    "type" : "oracle",
 
     "inputs": {
       "crop": true,
@@ -11,15 +11,13 @@
     },
 
     "question": {
-      "word_embedding_dim": 200,
+      "word_embedding_dim": 300,
       "glove" : false,
       "cell": "gru",
-      "rnn_state_size": 512,
+      "rnn_state_size": 1048,
       "bidirectional" : true,
       "layer_norm" : true,
-      "max_pool" : false,
-
-      "input_type": "dialogue"
+      "max_pool" : false
     },
 
     "spatial": {
@@ -38,7 +36,17 @@
       "mask": false,
 
       "reading_unit": {
-        "reading_unit_type" : "none"
+        "reading_unit_type" : "none",
+
+        "attention_hidden_units": 0,
+        "shared_attention": true,
+
+        "inject_img_before": false,
+        "inject_img_after": false,
+
+        "inject_img_before2": false,
+
+        "sum_memory" : false
       }
     },
 
@@ -75,7 +83,7 @@
       "head" : {
         "spatial_location" : true,
         "mask" : true,
-        "conv_out": 512,
+        "conv_out": 256,
         "conv_kernel": [1,1]
       }
     },
@@ -90,14 +98,14 @@
     {
       "inputs" :
       {
-       "question": true,
-       "category": true,
-       "spatial": true
+       "question": false,
+       "category": false,
+       "spatial": false
       },
       "no_mlp_units": 512
     },
 
-    "dropout_keep_prob" : 1.0
+    "dropout_keep_prob" : 0.5
 
   },
 

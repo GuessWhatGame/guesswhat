@@ -14,7 +14,7 @@
     },
 
     "question": {
-      "input_type": "single_question",
+      "input_type": "question",
       "word_embedding_dim": 300,
       "glove": false,
       "cell": "lstm",

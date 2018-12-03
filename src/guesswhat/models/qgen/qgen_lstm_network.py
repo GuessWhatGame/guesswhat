@@ -1,41 +1,48 @@
 import tensorflow as tf
 
-from neural_toolbox import utils\
+from neural_toolbox import utils
 
 from generic.tf_factory.attention_factory import get_attention
 from generic.tf_utils.abstract_network import AbstractNetwork
 
+from generic.tf_factory.image_factory import get_image_features
+
+import tensorflow.contrib.layers as tfc_layers
+
 
 class QGenNetworkLSTM(AbstractNetwork):
 
-
-    #TODO: add dropout
     def __init__(self, config, num_words, policy_gradient, device='', reuse=False):
         AbstractNetwork.__init__(self, "qgen", device=device)
 
         # Create the scope for this graph
         with tf.variable_scope(self.scope_name, reuse=reuse):
 
-            mini_batch_size = None
+            batch_size = None
+            self._is_training = tf.placeholder(tf.bool, name="is_training")
 
+            dropout_keep_scalar = float(config["dropout_keep_prob"])
+            dropout_keep = tf.cond(self._is_training,
+                                   lambda: tf.constant(dropout_keep_scalar),
+                                   lambda: tf.constant(1.0))
             # Image
-            self.images = tf.placeholder(tf.float32, [mini_batch_size] + config['image']["dim"], name='images')
+            self.images = tf.placeholder(tf.float32, [batch_size] + config['image']["dim"], name='images')
 
             # Question
-            self.dialogues = tf.placeholder(tf.int32, [mini_batch_size, None], name='dialogues')
-            self.answer_mask = tf.placeholder(tf.float32, [mini_batch_size, None], name='answer_mask')  # 1 if keep and (1 q/a 1) for (START q/a STOP)
-            self.padding_mask = tf.placeholder(tf.float32, [mini_batch_size, None], name='padding_mask')
-            self.seq_length = tf.placeholder(tf.int32, [mini_batch_size], name='seq_length')
+            self.dialogues = tf.placeholder(tf.int32, [batch_size, None], name='dialogue')
+            self.answer_mask = tf.placeholder(tf.float32, [batch_size, None], name='answer_mask')  # 1 if keep and (1 q/a 1) for (START q/a STOP)
+            self.padding_mask = tf.placeholder(tf.float32, [batch_size, None], name='padding_mask')
+            self.seq_length = tf.placeholder(tf.int32, [batch_size], name='seq_length')
 
             # Rewards
-            self.cum_rewards = tf.placeholder(tf.float32, shape=[mini_batch_size, None], name='cum_reward')
+            self.cum_rewards = tf.placeholder(tf.float32, shape=[batch_size, None], name='cum_reward')
 
             # DECODER Hidden state (for beam search)
             zero_state = tf.zeros([1, config['num_lstm_units']])  # default LSTM state is a zero-vector
             zero_state = tf.tile(zero_state, [tf.shape(self.images)[0], 1])  # trick to do a dynamic size 0 tensors
 
-            self.decoder_zero_state_c = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="state_c")
-            self.decoder_zero_state_h = tf.placeholder_with_default(zero_state, [mini_batch_size, config['num_lstm_units']], name="state_h")
+            self.decoder_zero_state_c = tf.placeholder_with_default(zero_state, [batch_size, config['num_lstm_units']], name="state_c")
+            self.decoder_zero_state_h = tf.placeholder_with_default(zero_state, [batch_size, config['num_lstm_units']], name="state_h")
             decoder_initial_state = tf.contrib.rnn.LSTMStateTuple(c=self.decoder_zero_state_c, h=self.decoder_zero_state_h)
 
             # Misc
@@ -58,20 +65,56 @@ class QGenNetworkLSTM(AbstractNetwork):
             #    is      it   a   blue   <?>    -      is    it   a   car  <?>   -   <stop_dialogue>  -
 
 
+            #####################
+            #   IMAGE
+            #####################
 
-            # image processing
-            if len(config["image"]["dim"]) == 1:
-                self.image_out = self.images
-            else:
-                self.image_out = get_attention(self.images, None, "none") #TODO: improve by using the previous lstm state?
+            self._image = tf.placeholder(tf.float32, [batch_size] + config['image']["dim"], name='image')
 
+            # get image
+            self.img_embedding = get_image_features(image=self._image,
+                                                    is_training=self._is_training,
+                                                    config=config['image'])
 
+            # pool image feature if needed
+            if len(self.img_embedding.get_shape()) > 2:
+                with tf.variable_scope("image_pooling"):
+                    self.img_embedding = get_attention(self.img_embedding, context=None,  # provide previous lstm state?
+                                                       is_training=self._is_training,
+                                                       config=config["pooling"],
+                                                       dropout_keep=dropout_keep,
+                                                       reuse=reuse)
             # Reduce the embedding size of the image
             with tf.variable_scope('image_embedding'):
-                self.image_emb = utils.fully_connected(self.image_out,
-                                                       config['image_embedding_size'])
-                image_emb = tf.expand_dims(self.image_emb, 1)
+                self.img_embedding = tfc_layers.fully_connected(self.img_embedding, activation_fn=tf.nn.relu, config['image_embedding_size'])
+                image_emb = tf.expand_dims(self.img_embedding, 1)
                 image_emb = tf.tile(image_emb, [1, tf.shape(input_dialogues)[1], 1])
+
+            #####################
+            #   DIALOGUE
+            #####################
+
+            self._dialogue = tf.placeholder(tf.int32, [batch_size, None], name='dialogue')
+            self._seq_length = tf.placeholder(tf.int32, [batch_size], name='seq_length_dialogue')
+
+            word_emb = tfc_layers.embed_sequence(ids=self._dialogue,
+                                                 vocab_size=num_words,
+                                                 embed_dim=config["question"]["word_embedding_dim"],
+                                                 scope="word_embedding",
+                                                 reuse=reuse)
+
+            if config["question"]['glove']:
+                self._glove = tf.placeholder(tf.float32, [None, None, 300], name="glove")
+                word_emb = tf.concat([word_emb, self._glove], axis=2)
+
+            _, self.dialogue_embedding = rnn.rnn_factory(inputs=word_emb,
+                                                         seq_length=self._seq_length,
+                                                         cell=config['question']["cell"],
+                                                         num_hidden=config['question']["rnn_units"],
+                                                         bidirectional=config["question"]["bidirectional"],
+                                                         max_pool=config["question"]["max_pool"],
+                                                         layer_norm=config["question"]["layer_norm"],
+                                                         reuse=reuse)
 
             # Compute the question embedding
             input_words = utils.get_embedding(
@@ -91,14 +134,13 @@ class QGenNetworkLSTM(AbstractNetwork):
                     dropout_keep_prob=1.0,
                     reuse=reuse)
 
-
             self.decoder_output, self.decoder_state = tf.nn.dynamic_rnn(
                 cell=decoder_lstm_cell,
                 inputs=decoder_input,
                 dtype=tf.float32,
                 initial_state=decoder_initial_state,
                 sequence_length=input_seq_length,
-                scope="word_decoder")  # TODO: use multi-layer RNN
+                scope="word_decoder")
 
             max_sequence = tf.reduce_max(self.seq_length)
 

@@ -1,6 +1,6 @@
 from generic.tf_utils.abstract_listener import EvaluatorListener
 import collections
-
+import tensorflow as tf
 
 class OracleListener(EvaluatorListener):
     def __init__(self, tokenizer, require):
@@ -37,8 +37,6 @@ class OracleListener(EvaluatorListener):
         return self.results
 
 
-import tensorflow as tf
-
 class ProfilerListener(EvaluatorListener):
     def __init__(self, pctx):
 
@@ -57,9 +55,6 @@ class ProfilerListener(EvaluatorListener):
 
     def after_epoch(self, is_training):
         self.pctx.profiler.profile_operations(options=self.opts)
-
-
-
 
 
 class QGenListener(EvaluatorListener):
@@ -88,6 +83,7 @@ class QGenListener(EvaluatorListener):
     def get_questions(self):
         return self.results
 
+
 class GuesserAccuracyListener(EvaluatorListener):
     def __init__(self, require):
         super(GuesserAccuracyListener, self).__init__(require)
@@ -115,3 +111,22 @@ class GuesserAccuracyListener(EvaluatorListener):
         accuracy /= len(self.scores)
 
         return accuracy
+
+
+class DummyAccuracyListener(EvaluatorListener):
+    def __init__(self, require):
+        super(DummyAccuracyListener, self).__init__(require)
+        self.scores = None
+        self.reset()
+
+    def after_batch(self, result, batch, is_training):
+        self.scores.append(result)
+
+    def reset(self):
+        self.scores = []
+
+    def before_epoch(self, is_training):
+        self.reset()
+
+    def evaluate(self):
+        return 1.0 * sum(self.scores) / len(self.scores)

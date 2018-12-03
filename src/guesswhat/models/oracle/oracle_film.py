@@ -14,7 +14,7 @@ from neural_toolbox.reading_unit import create_reading_unit, create_film_layer_w
 
 
 class FiLM_Oracle(ResnetModel):
-    def __init__(self, config, no_words, no_answers, reuse=False, device=''):
+    def __init__(self, config, num_words, num_answers, reuse=False, device=''):
         ResnetModel.__init__(self, "oracle", device=device)
 
         with tf.variable_scope(self.scope_name, reuse=reuse):
@@ -33,11 +33,11 @@ class FiLM_Oracle(ResnetModel):
 
             self._question = tf.placeholder(tf.int32, [self.batch_size, None], name='question')
             self._seq_length = tf.placeholder(tf.int32, [self.batch_size], name='seq_length')
-            self._answer = tf.placeholder(tf.int64, [self.batch_size, no_answers], name='answer')
+            self._answer = tf.placeholder(tf.int64, [self.batch_size, num_answers], name='answer')
 
             word_emb = tfc_layers.embed_sequence(
                 ids=self._question,
-                vocab_size=no_words,
+                vocab_size=num_words,
                 embed_dim=config["question"]["word_embedding_dim"],
                 scope="word_embedding",
                 reuse=reuse)
@@ -199,7 +199,7 @@ class FiLM_Oracle(ResnetModel):
 
                 self.hidden_state = tf.nn.dropout(self.hidden_state, dropout_keep)
                 self.out = tfc_layers.fully_connected(self.hidden_state,
-                                                      num_outputs=no_answers,
+                                                      num_outputs=num_answers,
                                                       activation_fn=None,
                                                       reuse=reuse,
                                                       scope="classifier_softmax_layer")
@@ -239,4 +239,4 @@ if __name__ == "__main__":
 
     get_recursively(config, "spatial", no_field_recursive=True)
 
-    FiLM_Oracle(config["model"], no_words=354, no_answers=3)
+    FiLM_Oracle(config["model"], num_words=354, num_answers=3)

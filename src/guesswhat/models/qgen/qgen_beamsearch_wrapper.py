@@ -62,7 +62,6 @@ class QGenBSWrapper(object):
         self.beam = [create_initial_beam(decoder_state_size=self.state_size,batch_size=1)
                      for _ in range(batch_size)]
 
-
     def sample_next_question(self, sess, prev_answers, game_data):
 
         for i, one_beam in enumerate(self.beam):
@@ -83,7 +82,7 @@ class QGenBSWrapper(object):
             self.beam[i] = new_beam
 
         # Compute output
-        questions =  [b.path[0] for b in self.beam]
+        questions = [b.path[0] for b in self.beam]
         seq_length = [len(q) for q in questions]
 
         padded_questions = np.full((len(self.beam), max(seq_length)), fill_value=self.tokenizer.padding_token)
@@ -92,9 +91,6 @@ class QGenBSWrapper(object):
 
         return padded_questions, questions, seq_length
 
-
-
-    # Legacy code: TODO refactor and use tf graph
     def eval_one_beam_search(self, sess, one_sample, initial_beam, keep_trajectory=False):
 
         to_evaluate = [initial_beam]
@@ -116,7 +112,7 @@ class QGenBSWrapper(object):
                 # evaluate next_step
                 softmax, decoder_state = sess.run([self.qgen.softmax_output, self.qgen.decoder_state],
                                                   feed_dict={
-                                                      self.qgen.images: one_sample["images"],
+                                                      self.qgen.images: one_sample["image"],
                                                       self.qgen.dialogues: dialogue_history,
                                                       self.qgen.seq_length: [dialogue_history.shape[1]],
                                                       self.qgen.decoder_zero_state_c: beam_token.decoder_state.c,

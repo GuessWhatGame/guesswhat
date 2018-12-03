@@ -9,7 +9,7 @@ from generic.data_provider.nlp_utils import padder, padder_3d
 from itertools import chain
 
 
-class QuestionerBatchifier(AbstractBatchifier):
+class RNNBatchifier(AbstractBatchifier):
 
     def __init__(self, tokenizer, sources, glove=None, status=list()):
         self.tokenizer = tokenizer
@@ -86,8 +86,8 @@ class QuestionerBatchifier(AbstractBatchifier):
 
                 obj_spats.append(spatial)
                 obj_cats.append(category)
-            batch['obj_spats'].append(obj_spats)
-            batch['obj_cats'].append(obj_cats)
+            batch['obj_spat'].append(obj_spats)
+            batch['obj_cat'].append(obj_cats)
 
             # image
             img = game.image.get_image()
@@ -112,8 +112,8 @@ class QuestionerBatchifier(AbstractBatchifier):
             batch['answer_mask'][i, all_answer_indices[i]] = 0.
 
         # Pad objects
-        batch['obj_spats'], obj_length = padder_3d(batch['obj_spats'])
-        batch['obj_cats'], obj_length = padder(batch['obj_cats'])
+        batch['obj_spat'], obj_length = padder_3d(batch['obj_spat'])
+        batch['obj_cat'], obj_length = padder(batch['obj_cat'])
         batch['obj_seq_length'] = obj_length
 
         if 'glove' in self.sources:
