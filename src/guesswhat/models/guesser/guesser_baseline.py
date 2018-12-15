@@ -146,6 +146,7 @@ class GuesserNetwork(AbstractNetwork):
             self.loss = tf.reduce_mean(self.loss)
 
             self.selected_object = tf.argmax(self.score_masked, axis=1)
+            self.softmax = tf.nn.softmax(self.score_masked)
 
             with tf.variable_scope('accuracy'):
                 self.accuracy = tf.equal(self.selected_object, tf.cast(self._targets, tf.int64))
@@ -161,7 +162,7 @@ class GuesserNetwork(AbstractNetwork):
 if __name__ == "__main__":
 
     import json
-    with open("../../../../config/guesser/config.baseline.json", 'rb') as f_config:
+    with open("../../../../config/guesser/config.config.baseline.json", 'rb') as f_config:
         config = json.loads(f_config.read().decode('utf-8'))
 
     network = GuesserNetwork(config["model"], num_words=352)

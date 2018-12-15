@@ -225,9 +225,8 @@ if __name__ == '__main__':
                     print("Could not find the following object index: {}".format(id_str))
 
             game.object_id = object_id
-            dummy_dataset.games = [game]
 
-            iterator = BasicIterator(dummy_dataset, batch_size=1, batchifier=batchifier)
+            iterator = BasicIterator([game], batch_size=1, batchifier=batchifier)
             success = looper_evaluator.process(sess, iterator, mode="greedy")
 
 

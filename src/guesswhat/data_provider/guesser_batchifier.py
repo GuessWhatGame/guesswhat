@@ -9,7 +9,7 @@ from generic.data_provider.nlp_utils import padder, padder_3d
 from itertools import chain
 
 
-class RNNBatchifier(AbstractBatchifier):
+class GuesserBatchifier(AbstractBatchifier):
 
     def __init__(self, tokenizer, sources, glove=None, status=list()):
         self.tokenizer = tokenizer

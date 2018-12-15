@@ -1,7 +1,6 @@
 import argparse
 import logging
 
-from multiprocessing import Pool
 from distutils.util import strtobool
 
 import tensorflow as tf
@@ -13,6 +12,7 @@ from generic.utils.config import load_config
 from generic.data_provider.image_loader import get_img_builder
 from generic.data_provider.nlp_utils import GloveEmbeddings
 from generic.utils.thread_pool import create_cpu_pool
+from guesswhat.train.eval_listener import QGenListener
 
 from guesswhat.data_provider.guesswhat_dataset import Dataset
 from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     #  LOAD CONFIG
     #############################
 
-    parser = argparse.ArgumentParser('Oracle network baseline!')
+    parser = argparse.ArgumentParser('QGen network baseline!')
 
     parser.add_argument("-data_dir", type=str, help="Directory with data")
     parser.add_argument("-out_dir", type=str, help="Directory in which experiments are stored")
@@ -33,7 +33,6 @@ if __name__ == '__main__':
     parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
     parser.add_argument("-glove_file", type=str, default="glove_dict.pkl", help="Glove file name")
     parser.add_argument("-img_dir", type=str, help='Directory with images')
-    parser.add_argument("-crop_dir", type=str, help='Directory with crops')
     parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
     parser.add_argument("-continue_exp", type=lambda x: bool(strtobool(x)), default="False", help="Continue previously started experiment?")
     parser.add_argument("-gpu_ratio", type=float, default=0.95, help="How many GPU ram is required? (ratio)")
@@ -73,9 +72,8 @@ if __name__ == '__main__':
 
     # Load glove
     glove = None
-    if config["model"]["question"]['glove']:
-        logger.info('Loading glove..')
-        glove = GloveEmbeddings(args.glove_file)
+    if config["model"]["dialogue"]['glove']:
+        assert False, "Glove are not supported for QGen"
 
     # Build Network
     logger.info('Building network..')
@@ -110,8 +108,11 @@ if __name__ == '__main__':
 
         # create training tools
         evaluator = Evaluator(sources, network.scope_name, network=network, tokenizer=tokenizer)
-        batchifier = batchifier_cstor(tokenizer, sources, glove=glove, status=('success',))
+        batchifier = batchifier_cstor(tokenizer, sources, status=('success',))
         xp_manager.configure_score_tracking("valid_loss", max_is_best=False)
+
+        idx, _ = network.create_greedy_graph(start_token=tokenizer.start_token, stop_token=tokenizer.stop_dialogue, max_tokens=10)
+        listener = QGenListener(require=idx)
 
         for t in range(start_epoch, no_epoch):
             logger.info('Epoch {}..'.format(t + 1))
@@ -123,21 +124,26 @@ if __name__ == '__main__':
                                       batch_size=batch_size, pool=cpu_pool,
                                       batchifier=batchifier,
                                       shuffle=True)
-            train_loss = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer])
+            [train_loss, _] = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer])
 
             valid_iterator = Iterator(validset, pool=cpu_pool,
                                       batch_size=batch_size*2,
                                       batchifier=batchifier,
                                       shuffle=False)
-            valid_loss = evaluator.process(sess, valid_iterator, outputs=outputs)
+            [valid_loss] = evaluator.process(sess, valid_iterator, outputs=outputs, listener=listener)
+
+            question_tokens = listener.results
+            for qt in question_tokens[:5]:
+                logger.info(tokenizer.decode(qt))
 
             logger.info("Training loss   : {}".format(train_loss))
             logger.info("Validation loss : {}".format(valid_loss))
 
             xp_manager.save_checkpoint(sess, saver,
                                        epoch=t,
-                                       train_loss=train_loss,
-                                       valid_loss=valid_loss)
+                                       losses=dict(
+                                           train_loss=train_loss,
+                                           valid_loss=valid_loss))
 
         # Load early stopping
         xp_manager.load_checkpoint(sess, saver, load_best=True)
@@ -148,7 +154,7 @@ if __name__ == '__main__':
                                  batch_size=batch_size*2,
                                  batchifier=batchifier,
                                  shuffle=False)
-        test_loss = evaluator.process(sess, test_iterator, outputs=outputs)
+        [test_loss, _] = evaluator.process(sess, test_iterator, outputs=outputs)
 
         logger.info("Testing loss: {}".format(test_loss))
 

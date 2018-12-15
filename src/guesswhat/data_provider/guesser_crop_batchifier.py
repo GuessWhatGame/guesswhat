@@ -29,7 +29,7 @@ class GuesserCropBatchifier(AbstractBatchifier):
                 new_game = copy.copy(game)
                 new_game.object = obj
                 new_game.object_id = obj.id
-                new_game.is_full_dialogue = (obj.id == game.object.id)  # hack!!! is_full_dialogue == is_object_to_find
+                new_game.user_data["is_target_object"] = (obj.id == game.object.id)
 
                 new_games.append(new_game)
 

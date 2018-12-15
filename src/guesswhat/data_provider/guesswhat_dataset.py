@@ -19,7 +19,7 @@ except ImportError:
 
 class Game(object):
 
-    def __init__(self, id, object_id, image, objects, qas, status, which_set, image_builder, crop_builder):
+    def __init__(self, id, object_id, guess_id, image, objects, qas, status, which_set, image_builder, crop_builder):
         self.dialogue_id = id
         self.object_id = object_id
         self.image = Image(id=image["id"],
@@ -50,7 +50,11 @@ class Game(object):
         self.answers = [qa['answer'] for qa in qas]
         self.status = status
 
+        self.id_guess_object = guess_id
+
         self.is_full_dialogue = True
+
+        self.user_data = dict()
 
     def show(self, img_raw_dir, display_index=False, display_mask=False):
         image_path = os.path.join(img_raw_dir, self.image.filename)
@@ -162,6 +166,7 @@ class Dataset(AbstractDataset):
 
                 g = Game(id=game['id'],
                          object_id=game['object_id'],
+                         guess_id=game.get('guess_id', -1),
                          objects=game['objects'],
                          qas=game['qas'],
                          image=game['image'],

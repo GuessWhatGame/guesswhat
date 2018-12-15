@@ -1,27 +1,49 @@
 import numpy as np
 
+
+from generic.data_provider.iterator import BasicIterator
 from generic.tf_utils.evaluator import Evaluator
 
 
 class GuesserWrapper(object):
 
-    def __init__(self, guesser):
+    def __init__(self, guesser, batchifier, tokenizer, listener):
         self.guesser = guesser
+        self.batchifier = batchifier
+        self.tokenizer = tokenizer
+        self.listener = listener
         self.evaluator = None
 
     def initialize(self, sess):
         self.evaluator = Evaluator(self.guesser.get_sources(sess), self.guesser.scope_name)
 
-    def find_object(self, sess, dialogues, seq_length, game_data):
-        game_data["dialogues"] = dialogues
-        game_data["seq_length"] = seq_length
+    def find_object(self, sess, games, _):
+
+        # the guesser may need to split the input
+        iterator = BasicIterator(games,
+                                 batch_size=len(games),
+                                 batchifier=self.batchifier)
 
         # sample
-        selected_object, softmax = self.evaluator.execute(sess, output=[self.guesser.selected_object, self.guesser.softmax], batch=game_data)
+        self.listener.reset()
+        for batch in iterator:
+            res = self.evaluator.execute(sess, output=self.listener.require, batch=batch)
+            self.listener.after_batch(res, batch, is_training=False)
 
-        found = (selected_object == game_data["target_index"])
+        results = self.listener.results()
 
-        return found, softmax, selected_object
+        new_games = []
+        for game in zip(games):
+
+            game.id_guess_object = results["id_guess_object"]
+            if results["success"]:
+                game.status = "success"
+            else:
+                game.status = "failure"
+
+            new_games.append(game)
+
+        return new_games
 
 
 class GuesserUserWrapper(object):

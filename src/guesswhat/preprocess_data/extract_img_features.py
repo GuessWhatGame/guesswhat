@@ -46,9 +46,7 @@ else:
     channel_mean = None
 
 # define the image loader
-dataset_args = {"folder": args.data_dir,
-                "dataset": args.dataset
-                }
+dataset_args = {"folder": args.data_dir}
 
 
 # define the image loader (raw vs crop)

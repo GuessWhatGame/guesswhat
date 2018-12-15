@@ -1,0 +1,41 @@
+{
+  "name" : "Baseline : RNN",
+
+  "model": {
+
+    "type" : "rnn",
+
+    "inputs": {
+      "image": true
+    },
+
+    "dialogue": {
+      "word_embedding_dim": 512,
+      "cell": "lstm",
+      "rnn_units": 1024,
+      "layer_norm" : false
+    },
+
+    "image": {
+      "image_input": "fc8",
+      "dim": [1000]
+    },
+
+    "pooling" : {
+      "mode": "none"
+    }
+  },
+
+  "optimizer": {
+    "no_epoch": 30,
+    "learning_rate": 1e-4,
+    "batch_size": 32,
+    "clip_val": 5.0,
+    "weight_decay": 0,
+    "weight_decay_add": [],
+    "weight_decay_remove": []
+  },
+
+  "status": ["success"],
+  "seed": -1
+}

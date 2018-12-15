@@ -3,35 +3,37 @@ from generic.tf_utils.evaluator import Evaluator
 
 
 class OracleWrapper(object):
-    def __init__(self, oracle, tokenizer):
+    def __init__(self, oracle, batchifier, tokenizer):
 
         self.oracle = oracle
         self.evaluator = None
+
         self.tokenizer = tokenizer
+        self.batchifier = batchifier
 
     def initialize(self, sess):
         self.evaluator = Evaluator(self.oracle.get_sources(sess), self.oracle.scope_name)
 
-    def answer_question(self, sess, question, seq_length, game_data):
+    def answer_question(self, sess, games, extra_data):
 
-        game_data["is_training"] = False
+        # Update batchifier sources
+        sources = self.oracle.get_sources()
+        sources = [s for s in sources if s not in extra_data]
+        self.batchifier.sources = sources
 
-        game_data["question"] = question
-        game_data["seq_length"] = seq_length
+        # create the training batch
+        batch = self.batchifier.apply(games)
+        batch = {**batch, **extra_data}
 
-        # convert dico name to fit oracle constraint
-        game_data["category"] = game_data.get("targets_category", None)
-        game_data["spatial"] = game_data.get("targets_spatial", None)
-
-        game_data["image"] = game_data.get("image", None)
-        game_data["image_mask"] = game_data.get("image_mask", None)
-
-        game_data["crop"] = game_data.get("crop", None)
-        game_data["crop_mask"] = game_data.get("crop_mask", None)
-
-        # get answer
-        answers_indices = self.evaluator.execute(sess, output=self.oracle.best_pred, batch=game_data)
+        # Sample
+        answers_indices = self.evaluator.execute(sess, ouput=self.oracle.best_pred, batch=batch)
         answers = [self.tokenizer.oracle_idx_to_answers[a] for a in answers_indices]
+
+        # Update game
+        new_games = []
+        for game, answer in zip(games, answers):
+            game.answers.append(self.tokenizer.decode(answer))
+            new_games.append(game)
 
         return answers
 

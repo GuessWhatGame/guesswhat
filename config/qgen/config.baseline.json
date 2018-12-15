@@ -1,9 +1,9 @@
 {
-  "name" : "Baseline : RNN",
+  "name" : "Baseline : Seq2Seq",
 
   "model": {
 
-    "type" : "rnn",
+    "type" : "seq2seq",
 
     "inputs": {
       "image": true
@@ -14,7 +14,11 @@
       "glove" : false,
       "cell": "gru",
       "rnn_units": 1024,
-      "layer_norm" : true
+      "bidirectional" : true,
+      "layer_norm" : true,
+      "max_pool" : false,
+
+      "share_decoder_emb": true
     },
 
     "image": {
@@ -23,13 +27,30 @@
       "normalize": false
     },
 
+
     "pooling" : {
-      "mode": "mean"
-    }
+      "mode": "glimpse",
+      "no_attention_mlp": 256,
+      "no_glimpses": 1
+    },
+
+    "fusion" : {
+      "mode": "vis",
+      "projection_size": 512
+    },
+
+    "decoder" : {
+      "rnn_units": 512,
+      "layer_norm" : true,
+      "cell" : "gru"
+    },
+
+    "dropout_keep_prob" : 0.5
+
   },
 
   "optimizer": {
-    "no_epoch": 40,
+    "no_epoch": 20,
     "learning_rate": 3e-4,
     "batch_size": 64,
     "clip_val": 10.0,

@@ -1,7 +1,6 @@
 import argparse
 import logging
 
-from multiprocessing import Pool
 from distutils.util import strtobool
 
 import tensorflow as tf
@@ -107,8 +106,6 @@ if __name__ == '__main__':
 
         sources = network.get_sources(sess)
         logger.info("Sources: " + ', '.join(sources))
-
-        sess.run(tf.global_variables_initializer())
 
         sess.run(tf.global_variables_initializer())
         if args.continue_exp or args.load_checkpoint is not None:

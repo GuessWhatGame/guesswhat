@@ -1,6 +1,8 @@
 from generic.tf_utils.abstract_listener import EvaluatorListener
 import collections
 import tensorflow as tf
+import numpy as np
+
 
 class OracleListener(EvaluatorListener):
     def __init__(self, tokenizer, require):
@@ -26,7 +28,6 @@ class OracleListener(EvaluatorListener):
 
     def before_epoch(self, is_training):
         self.reset()
-
 
     def after_epoch(self, is_training):
         for k, v in self.results.items():
@@ -93,13 +94,35 @@ class GuesserAccuracyListener(EvaluatorListener):
     def after_batch(self, result, batch, is_training):
 
         for i, (softmax, game) in enumerate(zip(result, batch["raw"])):
-            self.scores[game.dialogue_id][game.object_id] = [softmax[1], game.is_full_dialogue]
+            self.scores[game.dialogue_id][game.object_id] = [softmax[1], game.user_data["is_target_object"], game.object_id]
 
     def reset(self):
         self.scores = collections.defaultdict(dict)
 
     def before_epoch(self, is_training):
         self.reset()
+
+    def results(self):
+
+        results = dict()
+
+        for game_id, objects in self.scores.item():
+
+            # Compute softmax
+            # for object_id, score in objects.items():
+            #    softmax = {}  # TODO
+            #    if score
+
+            # retrieve success/failure
+            select_object = max(objects.values(), key=lambda v: v[0])
+
+            results[game_id] = dict(
+                success=select_object[1],
+                id_guess_object=select_object[2],
+                softmax={}
+            )
+
+        return results
 
     def evaluate(self):
 
@@ -113,20 +136,29 @@ class GuesserAccuracyListener(EvaluatorListener):
         return accuracy
 
 
-class DummyAccuracyListener(EvaluatorListener):
+class AccuracyListener(EvaluatorListener):
     def __init__(self, require):
-        super(DummyAccuracyListener, self).__init__(require)
-        self.scores = None
+        super(AccuracyListener, self).__init__(require)
+        self.results = None
         self.reset()
 
     def after_batch(self, result, batch, is_training):
-        self.scores.append(result)
+        for i, (softmax, game, target_index) in enumerate(zip(result, batch["raw"], batch['target_index'])):
+
+            predicted_index = np.argmax(softmax)
+
+            self.results[game.dialogue_id] = dict(
+                success=(target_index == predicted_index),
+                id_guess_object=game.objects[predicted_index].id,
+                softmax={game.objects[i].id: prob for i, prob in enumerate(softmax)}
+            )
 
     def reset(self):
-        self.scores = []
+        self.results = []
 
     def before_epoch(self, is_training):
         self.reset()
 
-    def evaluate(self):
-        return 1.0 * sum(self.scores) / len(self.scores)
+    def accuracy(self):
+        accuracy = [int(res["success"]) for res in self.results]
+        return 1.0 * sum(accuracy) / len(accuracy)

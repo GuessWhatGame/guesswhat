@@ -1,39 +1,65 @@
 import numpy as np
 import re
 
-from guesswhat.models.qgen.qgen_sampling_wrapper import QGenSamplingWrapper
-from guesswhat.models.qgen.qgen_beamsearch_wrapper import QGenBSWrapper
+from generic.tf_utils.evaluator import Evaluator
 
-# This is very ugly code that must be refactored.
-# To avoid breaking future code, we hide the implementation behind this Decorator
-# Implementation of sampling was updated for speed reason while eam search rely ion legacy code
-# Therefore, their internal implementation differs. that iw why we put a wrapper to hide technical detail in the looper
 
 class QGenWrapper(object):
-    def __init__(self, qgen, tokenizer, max_length, k_best):
 
-        self.sampling_wrapper = QGenSamplingWrapper(qgen, tokenizer, max_length)
-        self.bs_wrapper = QGenBSWrapper(qgen, tokenizer, max_length, k_best)
+    def __init__(self, qgen, batchifier, tokenizer, max_length, k_best):
+
         self.qgen = qgen
 
+        self.batchifier = batchifier
+        self.tokenizer = tokenizer
+
+        self.max_length = max_length
+
+        self.ops = dict()
+        self.ops["sampling"], _ = qgen.create_sampling_graph(start_token=tokenizer.start_token,
+                                                             stop_token=tokenizer.stop_token,
+                                                             max_tokens=max_length)
+
+        self.ops["greedy"], _ = qgen.create_greedy_graph(start_token=tokenizer.start_token,
+                                                         stop_token=tokenizer.stop_token,
+                                                         max_tokens=max_length)
+
+        self.ops["beam"], _ = qgen.create_greedy_graph(start_token=tokenizer.start_token,
+                                                       stop_token=tokenizer.stop_token,
+                                                       max_tokens=max_length,
+                                                       k_best=k_best)
+
+        self.evaluator = None
+
     def initialize(self, sess):
-        self.sampling_wrapper.initialize(sess)
-        self.bs_wrapper.initialize(sess)
+        self.evaluator = Evaluator(self.qgen.get_sources(sess), self.qgen.scope_name)
 
-    def reset(self, batch_size):
-        self.sampling_wrapper.reset(batch_size)
-        self.bs_wrapper.reset(batch_size)
+    def sample_next_question(self, sess, games, extra_data, mode):
 
-    def sample_next_question(self, sess, prev_answers, game_data, mode):
+        # Update batchifier sources
+        sources = self.qgen.get_sources()
+        sources = [s for s in sources if s not in extra_data]
+        self.batchifier.sources = sources
 
-        if mode == "sampling":
-            return self.sampling_wrapper.sample_next_question(sess, prev_answers, game_data, greedy=False)
-        elif mode == "greedy":
-            return self.sampling_wrapper.sample_next_question(sess, prev_answers, game_data, greedy=True)
-        elif mode == "beam_search":
-            return self.bs_wrapper.sample_next_question(sess, prev_answers, game_data)
-        else:
-            assert False, "Invalid samppling mode: {}".format(mode)
+        # create the training batch
+        batch = self.batchifier.apply(games)
+        batch = {**batch, **extra_data}
+
+        # Sample
+        tokens = self.evaluator.execute(sess, ouput=self.ops[mode], batch=batch)
+
+        # Update game
+        new_games = []
+        for game, question_tokens in zip(games, tokens):
+            game.questions.append(self.tokenizer.decode(question_tokens))
+            game.question_ids.append(len(game.question_ids))
+
+            if self.tokenizer.stop_dialogue in question_tokens:
+                game.is_full_dialogue = True
+
+            new_games.append(game)
+
+        return new_games
 
 
 class QGenUserWrapper(object):
