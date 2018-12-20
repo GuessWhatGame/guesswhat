@@ -129,14 +129,14 @@ if __name__ == '__main__':
                                       batchifier=batchifier,
                                       shuffle=True)
             train_loss, _ = evaluator.process(sess, train_iterator, outputs=outputs + [optimizer], listener=listener)
-            train_accuracy = listener.evaluate()  # Some guessers needs to go over the full dataset before comuting the accuracy, thus we use an intermediate listener
+            train_accuracy = listener.accuracy()  # Some guessers needs to go over the full dataset before comuting the accuracy, thus we use an intermediate listener
 
             valid_iterator = Iterator(validset, pool=cpu_pool,
                                       batch_size=batch_size*2,
                                       batchifier=batchifier,
                                       shuffle=False)
             valid_loss, _ = evaluator.process(sess, valid_iterator, outputs=outputs, listener=listener)
-            valid_accuracy = listener.evaluate()
+            valid_accuracy = listener.accuracy()
 
             logger.info("Training loss      : {}".format(train_loss))
             logger.info("Training accuracy  : {}".format(train_accuracy))
@@ -162,9 +162,10 @@ if __name__ == '__main__':
                                  batchifier=batchifier,
                                  shuffle=False)
         [test_loss, _] = evaluator.process(sess, test_iterator, outputs=outputs, listener=listener)
-        test_accuracy = listener.evaluate()
+        test_accuracy = listener.accuracy()
 
         logger.info("Testing loss: {}".format(test_loss))
+        logger.info("Testing accuracy: {}".format(test_accuracy))
         logger.info("Testing error: {}".format(1-test_accuracy))
 
         # Save the test scores

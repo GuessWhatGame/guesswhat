@@ -11,14 +11,15 @@
 
     "dialogue": {
       "word_embedding_dim": 512,
-      "cell": "lstm",
+      "cell": "gru",
       "rnn_units": 1024,
       "layer_norm" : false
     },
 
     "image": {
       "image_input": "fc8",
-      "dim": [1000]
+      "dim": [1000],
+      "projection_units" : 512
     },
 
     "pooling" : {

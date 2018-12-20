@@ -132,6 +132,7 @@ class QGenNetworkDecoder(AbstractNetwork):
             #   DECODER
             #####################
 
+            assert config['decoder']["cell"] != "lstm", "LSTM are not yet supported for the decoder"
             self.decoder_cell = rnn.create_cell(cell=config['decoder']["cell"],
                                                 num_units=int(self.visdiag_embedding.shape[-1]),
                                                 layer_norm=config["decoder"]["layer_norm"],
@@ -173,24 +174,24 @@ class QGenNetworkDecoder(AbstractNetwork):
                 with tf.variable_scope('rl_baseline'):
                     baseline_input = tf.stop_gradient(self.decoder_states)
 
-                    baseline_hidden = tfc_layers.fully_connected(baseline_input,
+                    self.baseline_hidden = tfc_layers.fully_connected(baseline_input,
                                                                  num_outputs=int(int(baseline_input.get_shape()[-1]) / 4),
                                                                  activation_fn=tf.nn.relu,
                                                                  scope='baseline_hidden',
                                                                  reuse=reuse)
 
-                    baseline_out = tfc_layers.fully_connected(baseline_hidden,
+                    self.baseline_out = tfc_layers.fully_connected(self.baseline_hidden,
                                                               num_outputs=1,
                                                               activation_fn=None,
                                                               scope='baseline',
                                                               reuse=reuse)
-                    self.baseline = tf.squeeze(baseline_out, axis=-1)
+                    self.baseline = tf.squeeze(self.baseline_out, axis=-1)
 
                     self.baseline_loss = tf.square(self._cum_rewards - self.baseline)
                     self.baseline_loss *= self._question_mask
 
-                    self.baseline_loss = tf.reduce_sum(self.baseline_loss, axis=0)
-                    self.baseline_loss = tf.reduce_mean(self.baseline_loss, axis=1)
+                    self.baseline_loss = tf.reduce_sum(self.baseline_loss, axis=1)
+                    self.baseline_loss = tf.reduce_mean(self.baseline_loss, axis=0)
 
                 with tf.variable_scope('policy_gradient_loss'):
                     self.log_of_policy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.decoder_outputs, labels=target_question)
@@ -199,9 +200,10 @@ class QGenNetworkDecoder(AbstractNetwork):
                     self.policy_gradient_loss *= self._question_mask
 
                     self.policy_gradient_loss = tf.reduce_sum(self.policy_gradient_loss, axis=1)  # sum over the dialogue trajectory
-                    self.policy_gradient_loss = tf.reduce_mean(self.policy_gradient_loss, axis=0)  # reduce over minibatch dimension
+                    self.policy_gradient_loss = tf.reduce_mean(self.policy_gradient_loss, axis=0)  # reduce over mini-batch dimension
 
-                    self.loss = self.policy_gradient_loss
+                    # Note that we can sum loss as there are independent (because of stop_gradient, otherwise we should reweigh them)
+                    self.loss = self.policy_gradient_loss + self.baseline_loss
 
     def create_sampling_graph(self, start_token, stop_token, max_tokens):
 

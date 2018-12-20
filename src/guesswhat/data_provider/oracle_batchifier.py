@@ -12,9 +12,9 @@ from itertools import chain
 class OracleBatchifier(AbstractBatchifier):
 
     def __init__(self, tokenizer, sources, glove=None, ignore_NA=False, status=list(), split_mode=BatchifierSplitMode.NoSplit):
-        self.tokenizer = tokenizer
         self.sources = sources
         self.status = status
+        self.tokenizer = tokenizer
         self.ignore_NA = ignore_NA
         self.glove = glove
         self.split_mode = split_mode
@@ -32,51 +32,52 @@ class OracleBatchifier(AbstractBatchifier):
 
         return games
 
-    def apply(self, games):
-        sources = self.sources
-        tokenizer = self.tokenizer
+    def apply(self, games, skip_targets=False):
+
         batch = collections.defaultdict(list)
+        batch["raw"] = games
+        batch_size = len(games)
 
         for i, game in enumerate(games):
-            batch['raw'].append(game)
 
             image = game.image
 
-            if 'question' in sources:
+            if 'question' in self.sources:
                 questions = []
                 for q, a in zip(game.questions[:-1], game.answers[:-1]):
-                    questions.append(tokenizer.encode(q))
-                    questions.append(tokenizer.encode(a, is_answer=True))
-                questions.append(tokenizer.encode(game.questions[-1]))
+                    questions.append(self.tokenizer.encode(q, add_stop_token=True))
+                    questions.append(self.tokenizer.encode(a, is_answer=True))
+                questions.append(self.tokenizer.encode(game.questions[-1], add_stop_token=True))
                 batch['question'].append(list(chain.from_iterable(questions)))
 
             if 'glove' in self.sources:
-                questions = []
-                for q, a in zip(game.questions[:-1], game.answers[:-1]):
-                    questions.append(self.tokenizer.tokenize_question(q))
-                    questions.append([self.tokenizer.format_answer(a)])
-                questions.append(tokenizer.tokenize_question(game.questions[-1]))
-                questions = list(chain.from_iterable(questions))
-                glove_vectors = self.glove.get_embeddings(questions)
+                words = self.tokenizer.decode(batch['question'][i])
+                glove_vectors = self.glove.get_embeddings(words)
                 batch['glove'].append(glove_vectors)
 
-            if 'answer' in sources:
-                batch['answer'].append(tokenizer.encode_oracle_answer(game.answers[-1], sparse=False))
+            if 'answer' in self.sources and not skip_targets:
+                batch['answer'].append(self.tokenizer.encode_oracle_answer(game.answers[-1], sparse=False))
 
-            if 'category' in sources:
+            if 'category' in self.sources:
                 batch['category'].append(game.object.category_id)
 
-            if 'spatial' in sources:
+            if 'spatial' in self.sources:
                 spat_feat = get_spatial_feat(game.object.bbox, image.width, image.height)
                 batch['spatial'].append(spat_feat)
 
-            if 'crop' in sources:
-                batch['crop'].append(game.object.get_crop())
+            if 'crop' in self.sources:
+                crop = game.object.get_crop()
+                if "crop" not in batch:  # initialize an empty array for better memory consumption
+                    batch["crop"] = np.zeros((batch_size,) + crop.shape)
+                batch["crop"][i] = crop
 
-            if 'image' in sources:
-                batch['image'].append(image.get_image())
+            if 'image' in self.sources:
+                img = game.image.get_image()
+                if "image" not in batch:  # initialize an empty array for better memory consumption
+                    batch["image"] = np.zeros((batch_size,) + img.shape)
+                batch["image"][i] = img
 
-            if 'image_mask' in sources:
+            if 'image_mask' in self.sources:
                 assert "image" in batch, "mask input require the image source"
                 mask = game.object.get_mask()
 
@@ -86,7 +87,7 @@ class OracleBatchifier(AbstractBatchifier):
                 mask = resize_image(Image.fromarray(mask), height=ft_height, width=ft_width)
                 batch['image_mask'].append(np.array(mask))
 
-            if 'crop_mask' in sources:
+            if 'crop_mask' in self.sources:
                 assert "crop" in batch, "mask input require the crop source"
                 cmask = game.object.get_mask()
 
@@ -98,10 +99,10 @@ class OracleBatchifier(AbstractBatchifier):
                 batch['crop_mask'].append(np.array(cmask))
 
         # Pad the questions
-        if 'question' in sources:
-            batch['question'], batch['seq_length'] = padder(batch['question'], padding_symbol=tokenizer.word2i['<padding>'])
+        if 'question' in self.sources:
+            batch['question'], batch['seq_length'] = padder(batch['question'], padding_symbol=self.tokenizer.padding_token)
 
-        if 'glove' in sources:
+        if 'glove' in self.sources:
             # (?, 16, 300)   (batch, max num word, glove emb size)
             batch['glove'], _ = padder_3d(batch['glove'])
 

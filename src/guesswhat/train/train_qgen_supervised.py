@@ -71,9 +71,9 @@ if __name__ == '__main__':
     tokenizer = GWTokenizer(args.dict_file)
 
     # Load glove
-    glove = None
-    if config["model"]["dialogue"]['glove']:
-        assert False, "Glove are not supported for QGen"
+    # glove = None
+    # if config["model"]["dialogue"]['glove']:
+    #    assert False, "Glove are not supported for QGen"
 
     # Build Network
     logger.info('Building network..')
@@ -99,8 +99,6 @@ if __name__ == '__main__':
         logger.info("Sources: " + ', '.join(sources))
 
         sess.run(tf.global_variables_initializer())
-
-        sess.run(tf.global_variables_initializer())
         if args.continue_exp or args.load_checkpoint is not None:
             start_epoch = xp_manager.load_checkpoint(sess, saver)
         else:
@@ -108,7 +106,7 @@ if __name__ == '__main__':
 
         # create training tools
         evaluator = Evaluator(sources, network.scope_name, network=network, tokenizer=tokenizer)
-        batchifier = batchifier_cstor(tokenizer, sources, status=('success',))
+        batchifier = batchifier_cstor(tokenizer, sources, status=('success',), supervised=True)
         xp_manager.configure_score_tracking("valid_loss", max_is_best=False)
 
         idx, _ = network.create_greedy_graph(start_token=tokenizer.start_token, stop_token=tokenizer.stop_dialogue, max_tokens=10)
@@ -132,7 +130,7 @@ if __name__ == '__main__':
                                       shuffle=False)
             [valid_loss] = evaluator.process(sess, valid_iterator, outputs=outputs, listener=listener)
 
-            question_tokens = listener.results
+            question_tokens = listener._results
             for qt in question_tokens[:5]:
                 logger.info(tokenizer.decode(qt))
 

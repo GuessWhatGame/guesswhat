@@ -1,6 +1,6 @@
 import numpy as np
-import re
-
+from generic.tf_utils.optimizer import AccOptimizer
+from generic.data_provider.iterator import BasicIterator
 from generic.tf_utils.evaluator import Evaluator
 
 
@@ -13,86 +13,114 @@ class QGenWrapper(object):
         self.batchifier = batchifier
         self.tokenizer = tokenizer
 
-        self.max_length = max_length
-
         self.ops = dict()
-        self.ops["sampling"], _ = qgen.create_sampling_graph(start_token=tokenizer.start_token,
-                                                             stop_token=tokenizer.stop_token,
-                                                             max_tokens=max_length)
+        self.ops["sampling"] = qgen.create_sampling_graph(start_token=tokenizer.start_token,
+                                                          stop_token=tokenizer.stop_token,
+                                                          max_tokens=max_length)
 
-        self.ops["greedy"], _ = qgen.create_greedy_graph(start_token=tokenizer.start_token,
-                                                         stop_token=tokenizer.stop_token,
-                                                         max_tokens=max_length)
+        self.ops["greedy"] = qgen.create_greedy_graph(start_token=tokenizer.start_token,
+                                                      stop_token=tokenizer.stop_token,
+                                                      max_tokens=max_length)
 
-        self.ops["beam"], _ = qgen.create_greedy_graph(start_token=tokenizer.start_token,
-                                                       stop_token=tokenizer.stop_token,
-                                                       max_tokens=max_length,
-                                                       k_best=k_best)
+        beam, seq_length = qgen.create_beam_graph(start_token=tokenizer.start_token,
+                                                  stop_token=tokenizer.stop_token,
+                                                  max_tokens=max_length,
+                                                  k_best=k_best)
+        # Only keep best beam
+        self.ops["beam"] = (beam.predicted_ids[:, :, 0], seq_length[:, 0])
 
         self.evaluator = None
 
     def initialize(self, sess):
-        self.evaluator = Evaluator(self.qgen.get_sources(sess), self.qgen.scope_name)
+        self.evaluator = Evaluator(self.qgen.get_sources(sess), self.qgen.scope_name,
+                                   network=self.qgen, tokenizer=self.tokenizer)
 
-    def sample_next_question(self, sess, games, extra_data, mode):
+    def policy_update(self, sess, games, optimizer):
 
-        # Update batchifier sources
-        sources = self.qgen.get_sources()
-        sources = [s for s in sources if s not in extra_data]
-        self.batchifier.sources = sources
+        # ugly hack... to allow training on RL
+        self.batchifier.generate = False
+        self.batchifier.supervised = False
+
+        iterator = BasicIterator(games, batch_size=len(games), batchifier=self.batchifier)
+
+        # Check whether the gradient is accumulated
+        if isinstance(optimizer, AccOptimizer):
+            sess.run(optimizer.zero)  # reset gradient
+            local_optimizer = optimizer.accumulate
+        else:
+            local_optimizer = optimizer
+
+        # Compute the gradient
+        self.evaluator.process(sess, iterator, outputs=[local_optimizer], show_progress=False)
+
+        if isinstance(optimizer, AccOptimizer):
+            sess.run(optimizer.update)  # Apply accumulated gradient
+
+    def sample_next_question(self, sess, games, mode):
+
+        # ugly hack... to allow training on RL
+        self.batchifier.generate = True
+        self.batchifier.supervised = False
 
         # create the training batch
-        batch = self.batchifier.apply(games)
-        batch = {**batch, **extra_data}
+        batch = self.batchifier.apply(games, skip_targets=True)
+        batch["is_training"] = False
 
         # Sample
-        tokens = self.evaluator.execute(sess, ouput=self.ops[mode], batch=batch)
+        tokens, seq_length = self.evaluator.execute(sess, output=self.ops[mode], batch=batch)
 
         # Update game
         new_games = []
-        for game, question_tokens in zip(games, tokens):
-            game.questions.append(self.tokenizer.decode(question_tokens))
-            game.question_ids.append(len(game.question_ids))
+        for game, question_tokens, l in zip(games, tokens, seq_length):
 
-            if self.tokenizer.stop_dialogue in question_tokens:
-                game.is_full_dialogue = True
+            if not game.user_data["has_stop_token"]:  # stop adding question if dialogue is over
+
+                # clean tokens after stop_dialogue_tokens
+                if self.tokenizer.stop_dialogue in question_tokens:
+                    game.user_data["has_stop_token"] = True
+                    l = np.nonzero(question_tokens == self.tokenizer.stop_dialogue)[0][0] + 1  # find the first stop_dialogue occurrence
+
+                # Append the newly generated question
+                game.questions.append(self.tokenizer.decode(question_tokens[:l]))
+                game.question_ids.append(len(game.question_ids))
 
             new_games.append(game)
 
         return new_games
 
 
-class QGenUserWrapper(object):
-    def __init__(self, tokenizer):
-        self.tokenizer = tokenizer
-
-    def initialize(self, sess):
-        pass
-
-    def reset(self, batch_size):
-        pass
-
-    def sample_next_question(self, _, prev_answers, game_data, **__):
-
-        if prev_answers[0] == self.tokenizer.start_token:
-            print("Type the character '(S)top' when you want to guess the object")
-        else:
-            print("A :", self.tokenizer.decode(prev_answers[0]))
-
-        print()
-        while True:
-            question = input('Q: ')
-            if question != "":
-                break
-
-        # Stop the dialogue
-        if question == "S" or question == "Stop":
-            tokens = [self.tokenizer.stop_dialogue]
-
-        # Stop the question (add stop token)
-        else:
-            question = re.sub('\?', '', question) # remove question tags if exist
-            question +=  " ?"
-            tokens = self.tokenizer.apply(question)
-
-        return [tokens], np.array([tokens]), [len(tokens)]
+# TODO: refactor
+# class QGenUserWrapper(object):
+#     def __init__(self, tokenizer):
+#         self.tokenizer = tokenizer
+#
+#     def initialize(self, sess):
+#         pass
+#
+#     def reset(self, batch_size):
+#         pass
+#
+#     def sample_next_question(self, _, prev_answers, game_data, **__):
+#
+#         if prev_answers[0] == self.tokenizer.start_token:
+#             print("Type the character '(S)top' when you want to guess the object")
+#         else:
+#             print("A :", self.tokenizer.decode(prev_answers[0]))
+#
+#         print()
+#         while True:
+#             question = input('Q: ')
+#             if question != "":
+#                 break
+#
+#         # Stop the dialogue
+#         if question == "S" or question == "Stop":
+#             tokens = [self.tokenizer.stop_dialogue]
+#
+#         # Stop the question (add stop token)
+#         else:
+#             question = re.sub('\?', '', question) # remove question tags if exist
+#             question +=  " ?"
+#             tokens = self.tokenizer.apply(question)
+#
+#         return [tokens], np.array([tokens]), [len(tokens)]

@@ -10,32 +10,31 @@
     },
 
     "dialogue": {
-      "word_embedding_dim": 200,
-      "glove" : false,
+      "word_embedding_dim": 512,
       "cell": "gru",
       "rnn_units": 1024,
-      "layer_norm" : true
+      "layer_norm" : false
     },
 
     "image": {
-      "image_input": "conv",
-      "dim": [14, 14, 2048],
-      "normalize": false
+      "image_input": "fc8",
+      "dim": [1000],
+      "projection_units" : 512
     },
 
     "pooling" : {
-      "mode": "mean"
+      "mode": "none"
     }
   },
 
   "optimizer": {
-    "no_epoch": 40,
-    "learning_rate": 3e-4,
-    "batch_size": 64,
-    "clip_val": 10.0,
-    "weight_decay": 5e-6,
-    "weight_decay_add": ["film_stack"],
-    "weight_decay_remove": ["feedback_loop", "FiLM_layer"]
+    "no_epoch": 30,
+    "learning_rate": 1e-4,
+    "batch_size": 32,
+    "clip_val": 5.0,
+    "weight_decay": 0,
+    "weight_decay_add": [],
+    "weight_decay_remove": []
   },
 
   "status": ["success"],

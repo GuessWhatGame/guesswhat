@@ -16,7 +16,7 @@ from generic.data_provider.nlp_utils import GloveEmbeddings
 from generic.utils.thread_pool import create_cpu_pool
 
 from guesswhat.data_provider.guesswhat_dataset import Dataset
-from guesswhat.data_provider.oracle_batchifier import OracleBatchifier, BatchifierSplitMode
+from guesswhat.data_provider.oracle_batchifier import BatchifierSplitMode
 from guesswhat.data_provider.guesswhat_tokenizer import GWTokenizer
 from guesswhat.data_provider.guesswhat_dataset import dump_oracle
 from guesswhat.models.oracle.oracle_factory import create_oracle
@@ -90,7 +90,7 @@ if __name__ == '__main__':
 
     # Build Network
     logger.info('Building network..')
-    network = create_oracle(config["model"], num_words=tokenizer.no_words)
+    network, batchifier_cstor = create_oracle(config["model"], num_words=tokenizer.no_words)
 
     # Build Optimizer
     logger.info('Building optimizer..')
@@ -129,7 +129,7 @@ if __name__ == '__main__':
 
         # create training tools
         evaluator = Evaluator(sources, network.scope_name, network=network, tokenizer=tokenizer)
-        batchifier = OracleBatchifier(tokenizer, sources, glove=glove, status=config['status'], split_mode=split_mode)
+        batchifier = batchifier_cstor(tokenizer, sources, glove=glove, status=config['status'], split_mode=split_mode)
         xp_manager.configure_score_tracking("valid_accuracy", max_is_best=True)
 
         for t in range(start_epoch, no_epoch):

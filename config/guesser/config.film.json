@@ -1,5 +1,5 @@
 {
-  "name" : "Multi-Hop FiLM + (img before)",
+  "name" : "FiLM",
 
   "model": {
 
@@ -31,8 +31,8 @@
 
     "film_input":
     {
-      "category": true,
-      "spatial": true,
+      "category": false,
+      "spatial": false,
       "mask": false,
 
       "reading_unit": {

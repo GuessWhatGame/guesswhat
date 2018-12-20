@@ -220,8 +220,6 @@ class FiLM_Oracle(ResnetModel):
                 self.accuracy = tf.equal(self.prediction, tf.argmax(self._answer, axis=1))
                 self.accuracy = tf.reduce_mean(tf.cast(self.accuracy, tf.float32))
 
-            tf.summary.scalar('accuracy', self.accuracy)
-
             print('Model... build!')
 
     def get_loss(self):

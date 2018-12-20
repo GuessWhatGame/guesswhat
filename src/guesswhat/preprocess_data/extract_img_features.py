@@ -28,11 +28,12 @@ parser.add_argument("-resnet_version", type=int, default=152, choices=[50, 101, 
 parser.add_argument("-ckpt", type=str, required=True, help="Path for network checkpoint: ")
 parser.add_argument("-feature_name", type=str, default="", help="Pick the name of the network features default=(fc8 - block4)")
 
-parser.add_argument("-mode", type=str, choices=["img", "crop"], help="Select to either dump the img/crop feature")
+parser.add_argument("-mode", type=str, choices=["img", "crop", "crop_all"], help="Select to either dump the img/crop feature")
 parser.add_argument("-subtract_mean", type=lambda x: bool(strtobool(x)), default="True", help="Preprocess the image by substracting the mean")
 parser.add_argument("-img_size", type=int, default=224, help="image size (pixels)")
 parser.add_argument("-crop_scale", type=float, default=1.1, help="crop scale around the bbox")
 parser.add_argument("-batch_size", type=int, default=64, help="Batch size to extract features")
+parser.add_argument("-no_games_to_load", type=int, default=float("inf"), help="No games to use during training Default : all")
 
 parser.add_argument("-gpu_ratio", type=float, default=0.95, help="How many GPU ram is required? (ratio)")
 parser.add_argument("-no_thread", type=int, default=2, help="No thread to load batch")
@@ -46,7 +47,7 @@ else:
     channel_mean = None
 
 # define the image loader
-dataset_args = {"folder": args.data_dir}
+dataset_args = {"folder": args.data_dir, "games_to_load": args.no_games_to_load}
 
 
 # define the image loader (raw vs crop)
@@ -61,7 +62,7 @@ if args.mode == "img":
 
     dataset_args["image_builder"] = image_builder
 
-elif args.mode == "crop":
+elif "crop" in args.mode:
     images = tf.placeholder(tf.float32, [None, args.img_size, args.img_size, 3], name='crop')
     source = 'crop'
     dataset_cstor = CropDataset.load

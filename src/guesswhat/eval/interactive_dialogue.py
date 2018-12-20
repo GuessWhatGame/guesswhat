@@ -214,17 +214,16 @@ if __name__ == '__main__':
 
                 id_str = int(id_str)
                 if 0 <= id_str < len(game.objects):
-                    object_index = id_str
-                    object_id = game.objects[object_index].id
+                    obj = game.objects[id_str]
                     break
                 elif id_str == -1:
-                    object_id = random.choice(game.objects).id
+                    obj = random.choice(game.objects)
                     break
 
                 else:
                     print("Could not find the following object index: {}".format(id_str))
 
-            game.object_id = object_id
+            game.object = obj
 
             iterator = BasicIterator([game], batch_size=1, batchifier=batchifier)
             success = looper_evaluator.process(sess, iterator, mode="greedy")

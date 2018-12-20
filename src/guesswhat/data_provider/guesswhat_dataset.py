@@ -21,7 +21,6 @@ class Game(object):
 
     def __init__(self, id, object_id, guess_id, image, objects, qas, status, which_set, image_builder, crop_builder):
         self.dialogue_id = id
-        self.object_id = object_id
         self.image = Image(id=image["id"],
                            width=image["width"],
                            height=image["height"],
@@ -43,7 +42,7 @@ class Game(object):
 
             self.objects.append(new_obj)
             if o['id'] == object_id:
-                self.object = new_obj  # Keep ref on the object to find
+                self._object = new_obj  # Keep ref on the object to find
 
         self.question_ids = [qa['id'] for qa in qas]
         self.questions = [qa['question'] for qa in qas]
@@ -55,6 +54,33 @@ class Game(object):
         self.is_full_dialogue = True
 
         self.user_data = dict()
+
+    # Optimization to pre-load image/crop inside the memory
+    def bufferize(self):
+        if self.image.image_loader is not None:
+            self.image.image_loader.bufferize()
+        if self.object.crop_loader is not None:
+            self.object.crop_loader.bufferize()
+        # for obj in self.objects:
+        #     if obj.crop_loader is not None:
+        #         obj.crop_loader.bufferize()
+
+    # Optimization to unload image/crop outside the memory
+    def flush(self):
+        if self.image.image_loader is not None:
+            self.image.image_loader.flush()
+        if self.object.crop_loader is not None:
+            self.object.crop_loader.flush()
+
+    @property
+    def object(self):
+        return self._object
+
+    @object.setter
+    def object(self, obj):
+
+        assert isinstance(obj, Object), "Invalid object type"
+        self._object = obj
 
     def show(self, img_raw_dir, display_index=False, display_mask=False):
         image_path = os.path.join(img_raw_dir, self.image.filename)
@@ -70,13 +96,23 @@ class Game(object):
 
         img.show()
 
+    def __str__(self):
+        s = "Game = id: {} / status: {}\n".format(self.dialogue_id, self.status)
+        s += " - {} \n".format(self.image)
+        s += " - {} \n".format(self.object)
+        s += " - Dialogue :\n"
+        for i, (q, a) in enumerate(zip(self.questions, self.answers + [""])):
+            s += "   {}) {} -> {}\n".format(i, q, a)
+        return s
+
 
 class Image(object):
     def __init__(self, id, width, height, url, which_set, image_builder=None):
         self.id = id
         self.width = width
         self.height = height
-        self.url = url
+        self.url = "http://cocodataset.org/#explore?id={}".format(id)
+        self.old_url = url
 
         self.image_loader = None
         if image_builder is not None:
@@ -88,6 +124,9 @@ class Image(object):
             return self.image_loader.get_image(**kwargs)
         else:
             return None
+
+    def __str__(self):
+        return "Image = id: {} / url: {}".format(self.id, self.url)
 
 
 class Bbox(object):
@@ -108,8 +147,7 @@ class Bbox(object):
         self.coco_bbox = bbox
 
     def __str__(self):
-        return "center : {0:5.2f}/{1:5.2f} - size: {2:5.2f}/{3:5.2f}" \
-            .format(self.x_center, self.y_center, self.x_width, self.y_height)
+        return "{0:5.2f}/{1:5.2f}".format(self.x_center, self.y_center)
 
 
 class Object(object):
@@ -145,6 +183,9 @@ class Object(object):
     def get_crop(self, **kwargs):
         assert self.crop_loader is not None, "Invalid crop loader"
         return self.crop_loader.get_image(**kwargs)
+
+    def __str__(self):
+        return "Object = category: {} / center: {}".format(self.category, self.bbox)
 
 
 class Dataset(AbstractDataset):
@@ -202,17 +243,16 @@ class CropDataset(AbstractDataset):
         super(CropDataset, self).__init__(new_games)
 
     @classmethod
-    def load(cls, folder, which_set, image_builder=None, crop_builder=None, expand_objects=False):
-        return CropDataset(Dataset(folder, which_set, image_builder, crop_builder), expand_objects=expand_objects)
+    def load(cls, folder, which_set, image_builder=None, crop_builder=None, expand_objects=False, games_to_load=float("inf")):
+        return CropDataset(Dataset(folder, which_set, image_builder, crop_builder, games_to_load), expand_objects=expand_objects)
 
     def split(self, game):
         games = []
         for obj in game.objects:
-            new_game = copy.copy(game)
+            new_game = copy.deepcopy(game)
             new_game.questions = [""]
             new_game.question_ids = [0]
             new_game.answers = [""]
-            new_game.object_id = obj.id
 
             # update object reference
             new_game.object = [o for o in game.objects if o.id == obj.id][0]
@@ -227,14 +267,14 @@ class CropDataset(AbstractDataset):
 
     def update_ref(self, game):
 
-        new_game = copy.copy(game)
+        new_game = copy.deepcopy(game)
         new_game.questions = [""]
         new_game.question_ids = [0]
         new_game.answers = [""]
 
         # Hack the image id to differentiate objects
-        new_game.image = copy.copy(game.image)
-        new_game.image.id = game.object_id
+        new_game.image = copy.deepcopy(game.image)
+        new_game.image.id = game.object.id
 
         return [new_game]
 
@@ -326,8 +366,8 @@ def dump_oracle(oracle_data, games, save_path, name="oracle"):
                                   "segment": o.segment,
                                   } for o in game.objects]
 
-            sample["object_id"] = game.object_id
-            sample["guess_object_id"] = game.object_id
+            sample["object_id"] = game.object.id
+            sample["guess_object_id"] = game.object.id
             sample["status"] = game.status
 
             f.write(str(json.dumps(sample)).encode())

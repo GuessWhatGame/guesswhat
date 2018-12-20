@@ -17,15 +17,23 @@ class GWTokenizer:
         for (k, v) in self.word2i.items():
             self.i2word[v] = k
 
+        self.start_word = "<start>"
+        self.stop_word = "?"
+        self.stop_dialogue_word = "<stop_dialogue>"
+        self.padding_word = "<padding>"
+        self.yes_word = "<yes>"
+        self.no_word = "<no>"
+        self.non_applicable_word = "<n/a>"
+
         # Retrieve key values
         self.no_words = len(self.word2i)
-        self.start_token = self.word2i["<start>"]
-        self.stop_token = self.word2i["?"]
-        self.stop_dialogue = self.word2i["<stop_dialogue>"]
-        self.padding_token = self.word2i["<padding>"]
-        self.yes_token = self.word2i["<yes>"]
-        self.no_token = self.word2i["<no>"]
-        self.non_applicable_token = self.word2i["<n/a>"]
+        self.start_token = self.word2i[self.start_word]
+        self.stop_token = self.word2i[self.stop_word]
+        self.stop_dialogue = self.word2i[self.stop_dialogue_word]
+        self.padding_token = self.word2i[self.padding_word]
+        self.yes_token = self.word2i[self.yes_word]
+        self.no_token = self.word2i[self.no_word]
+        self.non_applicable_token = self.word2i[self.non_applicable_word]
 
         assert self.padding_token == 0, "Padding token must be equal to zero"
 
@@ -38,7 +46,7 @@ class GWTokenizer:
 
         self.oracle_idx_to_answers = {v: k for k, v in self.oracle_answers_to_idx.items()}
 
-    def encode(self, question, is_answer=False):
+    def encode(self, question, is_answer=False, add_stop_token=False):
 
         tokens = []
         if is_answer:
@@ -49,6 +57,9 @@ class GWTokenizer:
                 if token not in self.word2i:
                     token = '<unk>'
                 tokens.append(self.word2i[token])
+
+            if add_stop_token and tokens[-1] != self.stop_token:
+                tokens += [self.stop_token]
 
         return tokens
 
@@ -99,5 +110,7 @@ class GWTokenizer:
             assert len(token) < len(self.oracle_answers_to_idx), "Invalid size for oracle answer"
             return self.oracle_answers_to_idx[token.argmax()]
 
-    def tokenize_question(self, question):
+    def tokenize_question(self, question, add_stop_token=False):
+        if add_stop_token and question[-1] != self.i2word[self.stop_token]:
+            question += self.i2word[self.stop_token]
         return self.wpt.tokenize(question)

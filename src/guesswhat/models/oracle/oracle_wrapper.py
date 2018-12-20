@@ -14,61 +14,57 @@ class OracleWrapper(object):
     def initialize(self, sess):
         self.evaluator = Evaluator(self.oracle.get_sources(sess), self.oracle.scope_name)
 
-    def answer_question(self, sess, games, extra_data):
-
-        # Update batchifier sources
-        sources = self.oracle.get_sources()
-        sources = [s for s in sources if s not in extra_data]
-        self.batchifier.sources = sources
+    def answer_question(self, sess, games):
 
         # create the training batch
-        batch = self.batchifier.apply(games)
-        batch = {**batch, **extra_data}
+        batch = self.batchifier.apply(games, skip_targets=True)
+        batch["is_training"] = False
 
         # Sample
-        answers_indices = self.evaluator.execute(sess, ouput=self.oracle.best_pred, batch=batch)
-        answers = [self.tokenizer.oracle_idx_to_answers[a] for a in answers_indices]
+        answers_index = self.evaluator.execute(sess, output=self.oracle.prediction, batch=batch)
 
         # Update game
         new_games = []
-        for game, answer in zip(games, answers):
-            game.answers.append(self.tokenizer.decode(answer))
+        for game, answer in zip(games, answers_index):
+            if not game.user_data["has_stop_token"]:  # stop adding answer if dialogue is over
+                game.answers.append(self.tokenizer.decode_oracle_answer(answer, sparse=True))
             new_games.append(game)
 
-        return answers
+        return new_games
 
 
-class OracleUserWrapper(object):
-    def __init__(self, tokenizer):
-        self.tokenizer = tokenizer
-
-    def initialize(self, sess):
-        pass
-
-    def answer_question(self, sess, question, **_):
-
-        # Discard question if it contains the stop dialogue token
-        if self.tokenizer.stop_dialogue in question[0]:
-            return [self.tokenizer.non_applicable_token]
-
-        print()
-        print("Q :", self.tokenizer.decode(question[0]))
-
-        while True:
-            answer = input('A (Yes,No,N/A): ').lower()
-            if answer == "y" or answer == "yes":
-                token = self.tokenizer.yes_token
-                break
-
-            elif answer == "n" or answer == "no":
-                token = self.tokenizer.no_token
-                break
-
-            elif answer == "na" or answer == "n/a" or answer == "not applicable":
-                token = self.tokenizer.non_applicable_token
-                break
-
-            else:
-                print("Invalid answer...")
-
-        return [token]
+# TODO: refactor
+# class OracleUserWrapper(object):
+#     def __init__(self, tokenizer):
+#         self.tokenizer = tokenizer
+#
+#     def initialize(self, sess):
+#         pass
+#
+#     def answer_question(self, sess, question, **_):
+#
+#         # Discard question if it contains the stop dialogue token
+#         if self.tokenizer.stop_dialogue in question[0]:
+#             return [self.tokenizer.non_applicable_token]
+#
+#         print()
+#         print("Q :", self.tokenizer.decode(question[0]))
+#
+#         while True:
+#             answer = input('A (Yes,No,N/A): ').lower()
+#             if answer == "y" or answer == "yes":
+#                 token = self.tokenizer.yes_token
+#                 break
+#
+#             elif answer == "n" or answer == "no":
+#                 token = self.tokenizer.no_token
+#                 break
+#
+#             elif answer == "na" or answer == "n/a" or answer == "not applicable":
+#                 token = self.tokenizer.non_applicable_token
+#                 break
+#
+#             else:
+#                 print("Invalid answer...")
+#
+#         return [token]

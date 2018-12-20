@@ -54,7 +54,7 @@
 
     "image": {
       "image_input": "conv",
-      "dim": [14, 14, 1024],
+      "dim": [14, 14, 2048],
       "normalize": false
     },
 

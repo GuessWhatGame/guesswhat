@@ -5,6 +5,7 @@ from tensorflow.python.util import nest
 
 import collections
 
+
 class BasicDecoderWithStateOutput(
     collections.namedtuple('BasicDecoderWithStateOutput', ('rnn_output', 'rnn_state', 'sample_id'))):
     """ Basic Decoder Named Tuple with rnn_output, rnn_state, and sample_id """
@@ -22,7 +23,7 @@ class BasicDecoderWithState(tfc_seq.BasicDecoder):
     @property
     def output_size(self):
         return BasicDecoderWithStateOutput(rnn_output=self._rnn_output_size(),
-                                           rnn_state=tensor_shape.TensorShape([self._cell.output_size]),
+                                           rnn_state=tensor_shape.TensorShape([self._cell.output_size]),  # TODO: Do not support lstm for now
                                            sample_id=self._helper.sample_ids_shape)
 
     @property

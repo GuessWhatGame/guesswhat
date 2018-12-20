@@ -1,13 +1,18 @@
 {
+  "name": "Basic Looper",
+
   "optimizer": {
-    "no_epoch": 150,
-    "learning_rate": 1e-3,
+    "no_epoch": 20,
+    "learning_rate": 1e-4,
     "batch_size": 64,
-    "clip_val": 5
+    "clip_val": 0,
+    "weight_decay": 0,
+    "weight_decay_add": [],
+    "weight_decay_remove": []
   },
 
   "loop": {
-    "max_question": 5,
+    "max_question": 6,
     "max_depth" : 12,
     "beam_k_best" : 20
   },

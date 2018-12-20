@@ -45,6 +45,13 @@ class QGenNetworkRNN(AbstractNetwork):
                                                          dropout_keep=1.,
                                                          reuse=reuse)
 
+                if config['image']['projection_units'] > 0:
+                    self.visual_features = tfc_layers.fully_connected(self.visual_features,
+                                                                      num_outputs=config["image"]["projection_units"],
+                                                                      activation_fn=tf.nn.relu,
+                                                                      reuse=reuse,
+                                                                      scope="image_projection_units")
+
             else:
                 self.visual_features = None
 
@@ -79,6 +86,7 @@ class QGenNetworkRNN(AbstractNetwork):
             self._question_mask = tf.sequence_mask(lengths=self._seq_length_dialogue - 1, dtype=tf.float32)  # -1 : remove start token at decoding time
             self._answer_mask = tf.placeholder(tf.float32, [batch_size, None], name='answer_mask')[:, 1:]  # -1 : remove start token at decoding time
 
+            assert config['dialogue']["cell"] != "lstm", "LSTM are not yet supported for the decoder"
             self.decoder_cell = rnn.create_cell(cell=config['dialogue']["cell"],
                                                 num_units=config['dialogue']["rnn_units"],
                                                 layer_norm=config["dialogue"]["layer_norm"],
@@ -90,7 +98,7 @@ class QGenNetworkRNN(AbstractNetwork):
                                                      sequence_length=self._seq_length_dialogue - 1)  # -1 : remove start token at decoding time
 
             # Define RNN states
-            self.zero_states = self.decoder_cell.zero_state(tf.shape(self._seq_length_dialogue), dtype=tf.float32)
+            self.zero_states = self.decoder_cell.zero_state(tf.shape(self._seq_length_dialogue)[0], dtype=tf.float32)
             decoder = BasicDecoderWithState(cell=self.decoder_cell,
                                             helper=training_helper,
                                             initial_state=self.zero_states,
@@ -143,8 +151,8 @@ class QGenNetworkRNN(AbstractNetwork):
                     self.baseline_loss = tf.square(self._cum_rewards - self.baseline)
                     self.baseline_loss *= mask
 
-                    self.baseline_loss = tf.reduce_sum(self.baseline_loss, axis=0)
-                    self.baseline_loss = tf.reduce_mean(self.baseline_loss, axis=1)
+                    self.baseline_loss = tf.reduce_sum(self.baseline_loss, axis=1)
+                    self.baseline_loss = tf.reduce_mean(self.baseline_loss, axis=0)
 
                 with tf.variable_scope('policy_gradient_loss'):
                     self.log_of_policy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.decoder_outputs, labels=target_dialogue)
