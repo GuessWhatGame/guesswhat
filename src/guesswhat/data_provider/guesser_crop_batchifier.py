@@ -26,9 +26,14 @@ class GuesserCropBatchifier(AbstractBatchifier):
 
         for game in games:
             for i, obj in enumerate(game.objects):
-                new_game = copy.deepcopy(game)
+                new_game = copy.copy(game)  # Beware shallow copy!
                 new_game.object = obj
-                new_game.user_data["is_target_object"] = (obj.id == game.object.id)
+                new_game.user_data = {"is_target_object": (obj.id == game.object.id)}
+
+                # Filter ill-formated questions with stop_dialogues tokens
+                if self.tokenizer.stop_dialogue_word in game.questions[-1]:
+                    new_game.questions = game.questions[:-1]
+                    new_game.questions_ids = game.questions_ids[:-1]
 
                 new_games.append(new_game)
 
@@ -59,8 +64,7 @@ class GuesserCropBatchifier(AbstractBatchifier):
                 for q, a in zip(game.questions, game.answers):
                     questions.append(self.tokenizer.encode(q, add_stop_token=True))
                     questions.append(self.tokenizer.encode(a, is_answer=True))
-                if questions[-1] != self.tokenizer.stop_dialogue:
-                    questions.append([self.tokenizer.stop_dialogue])
+                questions.append([self.tokenizer.stop_dialogue])
                 batch['question'].append(list(chain.from_iterable(questions)))
 
             if 'glove' in self.sources:

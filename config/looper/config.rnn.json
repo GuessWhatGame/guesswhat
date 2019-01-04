@@ -1,0 +1,22 @@
+{
+  "name": "Basic Looper (rnn)",
+
+  "optimizer": {
+    "no_epoch": 100,
+    "learning_rate": 1e-3,
+    "batch_size": 64,
+    "clip_val": 5,
+    "weight_decay": 0,
+    "weight_decay_add": [],
+    "weight_decay_remove": []
+  },
+
+  "loop": {
+    "max_question": 5,
+    "max_depth" : 12,
+    "beam_k_best" : 20
+  },
+
+  "seed": -1
+
+}

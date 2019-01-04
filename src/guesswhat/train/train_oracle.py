@@ -61,16 +61,18 @@ if __name__ == '__main__':
 
     # Load image
     image_builder, crop_builder = None, None
-    use_resnet = False
+    use_resnet, use_process = False, False
     if config["model"]['inputs'].get('image', False):
         logger.info('Loading images..')
         image_builder = get_img_builder(config['model']['image'], args.img_dir)
         use_resnet = image_builder.is_raw_image()
+        use_process |= image_builder.require_multiprocess()
 
     if config["model"]['inputs'].get('crop', False):
         logger.info('Loading crops..')
         crop_builder = get_img_builder(config['model']['crop'], args.crop_dir, is_crop=True)
         use_resnet = crop_builder.is_raw_image()
+        use_process |= image_builder.require_multiprocess()
 
     # Load data
     logger.info('Loading data..')
@@ -136,7 +138,7 @@ if __name__ == '__main__':
             logger.info('Epoch {}..'.format(t + 1))
 
             # Create cpu pools (at each iteration otherwise threads may become zombie - python bug)
-            cpu_pool = create_cpu_pool(args.no_thread, use_process=image_builder.require_multiprocess())
+            cpu_pool = create_cpu_pool(args.no_thread, use_process=use_process)
 
             train_iterator = Iterator(trainset,
                                       batch_size=batch_size, pool=cpu_pool,
@@ -166,11 +168,11 @@ if __name__ == '__main__':
 
         # Load early stopping
         xp_manager.load_checkpoint(sess, saver, load_best=True)
-        cpu_pool = create_cpu_pool(args.no_thread, use_process=True)
+        cpu_pool = create_cpu_pool(args.no_thread, use_process=use_process)
 
         # Create Listener
         oracle_listener = OracleListener(tokenizer=tokenizer, require=network.prediction)
-        batchifier.status = ["success", "failure", "incomplete"]
+        batchifier.status = []
 
         test_iterator = Iterator(testset, pool=cpu_pool,
                                  batch_size=batch_size*2,

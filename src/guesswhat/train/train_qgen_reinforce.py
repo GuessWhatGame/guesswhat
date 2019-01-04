@@ -118,9 +118,11 @@ if __name__ == '__main__':
     #############################
 
     logger.info('Building optimizer..')
+    pg_variables = [v for v in tf.trainable_variables() if "qgen" in v.name and 'rl_baseline' not in v.name]
     optimizer, _ = create_optimizer(qgen_network, loop_config["optimizer"],
-                                    optim_cst=tf.train.AdamOptimizer,
-                                    accumulate_gradient=True)
+                                    var_list=pg_variables,
+                                    optim_cst=tf.train.GradientDescentOptimizer,  # tf.train.AdamOptimizer,
+                                    accumulate_gradient=qgen_network.is_seq2seq())
 
     ###############################
     #  START TRAINING
@@ -189,20 +191,20 @@ if __name__ == '__main__':
         evaluator = Evaluator(loop_sources, qgen_network.scope_name, network=qgen_network, tokenizer=tokenizer)
         cpu_pool = create_cpu_pool(args.no_thread, use_process=False)
 
-        logger.info(">>>  Initial models  <<<")
-        test_models(sess, testset, cpu_pool=cpu_pool, batch_size=batch_size*2,
-                    oracle=oracle_network, oracle_batchifier=oracle_batchifier,
-                    guesser=guesser_network, guesser_batchifier=guesser_batchifier, guesser_listener=guesser_listener,
-                    qgen=qgen_network, qgen_batchifier=qgen_batchifier)
-
-        logger.info(">>>  New Objects  <<<")
-        compute_qgen_accuracy(sess, trainset, batchifier=train_batchifier, looper=game_engine,
-                              mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size)
-
-        logger.info(">>>  New Games  <<<")
-        compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, looper=game_engine,
-                              mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size)
-        logger.info(">>>------------------------------------------------<<<")
+        # logger.info(">>>  Initial models  <<<")
+        # test_models(sess, testset, cpu_pool=cpu_pool, batch_size=batch_size*2,
+        #             oracle=oracle_network, oracle_batchifier=oracle_batchifier,
+        #             guesser=guesser_network, guesser_batchifier=guesser_batchifier, guesser_listener=guesser_listener,
+        #             qgen=qgen_network, qgen_batchifier=qgen_batchifier)
+        #
+        # logger.info(">>>  New Objects  <<<")
+        # compute_qgen_accuracy(sess, trainset, batchifier=train_batchifier, looper=game_engine,
+        #                       mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size)
+        #
+        # logger.info(">>>  New Games  <<<")
+        # compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, looper=game_engine,
+        #                       mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size)
+        # logger.info(">>>------------------------------------------------<<<")
 
         if args.skip_training:
             logger.info("Skip training...")
@@ -217,10 +219,11 @@ if __name__ == '__main__':
 
             cpu_pool = create_cpu_pool(args.no_thread, use_process=False)
 
-            train_iterator = Iterator(trainset, batch_size=batch_size,
+            train_iterator = Iterator(trainset,
+                                      batch_size=batch_size,
                                       pool=cpu_pool,
-                                      batchifier=train_batchifier,
-                                      no_semaphore=5)  # To avoid memory explosion while preloading images
+                                      shuffle=True,
+                                      batchifier=train_batchifier)
 
             [train_accuracy, _] = game_engine.process(sess, train_iterator,
                                                       optimizer=optimizer,
@@ -229,8 +232,7 @@ if __name__ == '__main__':
             valid_iterator = Iterator(validset, pool=cpu_pool,
                                       batch_size=batch_size,
                                       batchifier=eval_batchifier,
-                                      shuffle=False,
-                                      no_semaphore=5)  # To avoid memory explosion while preloading images)
+                                      shuffle=False)
             [val_accuracy, _] = game_engine.process(sess, valid_iterator, mode="sampling")
 
             logger.info("Accuracy (train - sampling) : {}".format(train_accuracy))
@@ -258,4 +260,3 @@ if __name__ == '__main__':
         compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, looper=game_engine,
                               mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size)
         logger.info(">>>------------------------------------------------<<<")
-

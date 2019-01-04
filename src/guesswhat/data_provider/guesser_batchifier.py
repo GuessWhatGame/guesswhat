@@ -1,5 +1,6 @@
 import numpy as np
 import collections
+import copy
 from generic.data_provider.batchifier import AbstractBatchifier
 
 from generic.data_provider.image_preprocessors import get_spatial_feat
@@ -20,6 +21,23 @@ class GuesserBatchifier(AbstractBatchifier):
             games = [g for g in games if g.status in self.status]
 
         return games
+
+    def split(self, games):
+        new_games = []
+
+        for game in games:
+
+            # Filter ill-formatted questions with stop_dialogues tokens
+            if self.tokenizer.stop_dialogue_word in game.questions[-1]:
+                new_game = copy.copy(game)
+                game.questions[:-1] = game.questions[:-1]
+                new_game.questions_ids = game.question_ids[:-1]
+            else:
+                new_game = game
+
+            new_games.append(new_game)
+
+        return new_games
 
     def apply(self, games, skip_targets=False):
 

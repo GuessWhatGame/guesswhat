@@ -40,8 +40,6 @@ class OracleBatchifier(AbstractBatchifier):
 
         for i, game in enumerate(games):
 
-            image = game.image
-
             if 'question' in self.sources:
                 questions = []
                 for q, a in zip(game.questions[:-1], game.answers[:-1]):
@@ -62,7 +60,7 @@ class OracleBatchifier(AbstractBatchifier):
                 batch['category'].append(game.object.category_id)
 
             if 'spatial' in self.sources:
-                spat_feat = get_spatial_feat(game.object.bbox, image.width, image.height)
+                spat_feat = get_spatial_feat(game.object.bbox, game.image.width, game.image.height)
                 batch['spatial'].append(spat_feat)
 
             if 'crop' in self.sources:

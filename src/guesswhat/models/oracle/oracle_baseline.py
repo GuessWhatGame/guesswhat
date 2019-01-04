@@ -123,7 +123,7 @@ class OracleNetwork(ResnetModel):
                 self.out = tfc_layers.fully_connected(emb, num_hiddens, activation_fn=tf.nn.relu, scope='l1')
                 self.out = tfc_layers.fully_connected(self.out, num_answers, activation_fn=None, scope='None')
 
-                self.cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits=self.out, labels=self._answer, name='cross_entropy')
+                self.cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.out, labels=self._answer, name='cross_entropy')
                 self.loss = tf.reduce_mean(self.cross_entropy)
 
                 self.softmax = tf.nn.softmax(self.out, name='answer_prob')

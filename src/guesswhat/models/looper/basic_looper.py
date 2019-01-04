@@ -13,7 +13,7 @@ class BasicLooper(object):
         self.guesser = guesser_wrapper
         self.qgen = qgen_wrapper
 
-    def process(self, sess, iterator, mode, optimizer=list(), store_games=False):
+    def process(self, sess, iterator, mode, optimizer=None, store_games=False):
 
         # initialize the wrapper
         self.qgen.initialize(sess)
@@ -45,7 +45,7 @@ class BasicLooper(object):
             games.extend(ongoing_games)
 
             # Step 3 : Apply gradient
-            if len(optimizer) > 0:
+            if optimizer is not None:
                 self.qgen.policy_update(sess, ongoing_games, optimizer=optimizer)
 
             # Step 4 : Compute score

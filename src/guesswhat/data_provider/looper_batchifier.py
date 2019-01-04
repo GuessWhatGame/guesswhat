@@ -6,9 +6,10 @@ from generic.data_provider.batchifier import AbstractBatchifier
 
 class LooperBatchifier(AbstractBatchifier):
 
-    def __init__(self, tokenizer, generate_new_games):
+    def __init__(self, tokenizer, generate_new_games, bufferize=True):
         self.tokenizer = tokenizer
         self.generate_new_games = generate_new_games
+        self.bufferize = bufferize
 
     def filter(self, games):
 
@@ -30,7 +31,7 @@ class LooperBatchifier(AbstractBatchifier):
         for i, g in enumerate(games):
 
             # Defensive copy
-            g = copy.deepcopy(g)
+            g = copy.copy(g)  # Beware shallow copy!
 
             # Reset game data
             g.dialogue_id = i
@@ -57,7 +58,8 @@ class LooperBatchifier(AbstractBatchifier):
 
         # Optim to preload image in memory using an external thread
         # Note that the memory must be manually free once the batch is consumed! (game.flush())
-        for i, game in enumerate(games):
-            game.bufferize()
+        if self.bufferize:
+            for i, game in enumerate(games):
+                game.bufferize()
 
         return batch

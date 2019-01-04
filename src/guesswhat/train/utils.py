@@ -5,9 +5,10 @@ from generic.tf_utils.evaluator import Evaluator
 import logging
 import copy
 
+
 def test_one_model(sess, dataset, cpu_pool, batch_size, network, batchifier, loss, listener=None):
     sources = network.get_sources(sess)
-    evaluator = Evaluator(sources, network.scope_name, network=network, )
+    evaluator = Evaluator(sources, network.scope_name, network=network)
     iterator = Iterator(dataset, pool=cpu_pool, batch_size=batch_size, batchifier=batchifier)
     return evaluator.process(sess, iterator, outputs=loss, listener=listener)
 
@@ -21,24 +22,31 @@ def test_models(sess, dataset, cpu_pool, batch_size,
     logger = logging.getLogger()
 
     # Oracle:
+    oracle_batchifier = copy.copy(oracle_batchifier)
+    oracle_batchifier.status = []  # test on full dataset
     [oracle_loss, oracle_accuracy] = test_one_model(sess, dataset, cpu_pool, batch_size,
                                                     network=oracle,
                                                     batchifier=oracle_batchifier,
                                                     loss=[oracle.loss, oracle.accuracy])
     logger.info("Oracle test loss: {}".format(oracle_loss))
+    logger.info("Oracle test error: {}".format(1-oracle_accuracy))
     logger.info("Oracle test accuracy: {}".format(oracle_accuracy))
 
     # Guesser:
+    guesser_batchifier = copy.copy(guesser_batchifier)
+    guesser_batchifier.status = ["success"]  # test on successful dataset
     [guesser_loss] = test_one_model(sess, dataset, cpu_pool, batch_size,
                                     network=guesser,
                                     batchifier=guesser_batchifier,
                                     loss=[guesser.loss],
                                     listener=guesser_listener)
     logger.info("Guesser test loss: {}".format(guesser_loss))
+    logger.info("Guesser test error: {}".format(1-guesser_listener.accuracy()))
     logger.info("Guesser test accuracy: {}".format(guesser_listener.accuracy()))
 
     # QGen:
     qgen_batchifier = copy.copy(qgen_batchifier)
+    qgen_batchifier.status = ["success"]  # test on successful dataset
     qgen_batchifier.supervised = True
     qgen_batchifier.generate = False
     [guesser_loss] = test_one_model(sess, dataset, cpu_pool, batch_size,
@@ -56,8 +64,7 @@ def compute_qgen_accuracy(sess, dataset, batchifier, looper, mode, cpu_pool, bat
         test_iterator = Iterator(dataset, pool=cpu_pool,
                                  batch_size=batch_size,
                                  batchifier=batchifier,
-                                 shuffle=False,
-                                 use_padding=True)
+                                 shuffle=False)
 
         [test_score, _] = looper.process(sess, test_iterator, mode=m, store_games=store_games)
 
@@ -72,8 +79,7 @@ def compute_qgen_accuracy(sess, dataset, batchifier, looper, mode, cpu_pool, bat
 #         test_iterator = Iterator(dataset, pool=cpu_pool,
 #                                  batch_size=batch_size,
 #                                  batchifier=batchifier,
-#                                  shuffle=False,
-#                                  use_padding=True)
+#                                  shuffle=False)
 #         test_score = evaluator.process(sess, test_iterator, mode=m, store_games=store_games)
 #
 #         # Retrieve the generated games and dump them as a dataset

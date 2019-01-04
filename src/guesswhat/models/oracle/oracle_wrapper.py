@@ -1,5 +1,6 @@
-
 from generic.tf_utils.evaluator import Evaluator
+from generic.data_provider.batchifier import BatchifierSplitMode
+import copy
 
 
 class OracleWrapper(object):
@@ -16,8 +17,18 @@ class OracleWrapper(object):
 
     def answer_question(self, sess, games):
 
-        # create the training batch
-        batch = self.batchifier.apply(games, skip_targets=True)
+        # create the training batch #TODO: hack -> to remove
+        oracle_games = []
+        if self.batchifier.split_mode == BatchifierSplitMode.SingleQuestion:
+            for game in games:
+                g = copy.copy(game)
+                g.questions = [game.questions[-1]]
+                g.question_ids = [game.question_ids[-1]]
+                oracle_games.append(g)
+        else:
+            oracle_games = games
+
+        batch = self.batchifier.apply(oracle_games, skip_targets=True)
         batch["is_training"] = False
 
         # Sample

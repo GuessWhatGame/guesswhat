@@ -42,7 +42,7 @@ class BasicDecoderWithState(tfc_seq.BasicDecoder):
         # store state
         outputs = BasicDecoderWithStateOutput(
             rnn_output=outputs.rnn_output,
-            rnn_state=state,
+            rnn_state=next_state,
             sample_id=outputs.sample_id)
 
         return outputs, next_state, next_inputs, finished

@@ -51,7 +51,7 @@ class Seq2SeqBatchifier(AbstractBatchifier):
                     games_with_end_of_dialogue.append(game)
 
                     # Add an extra question with end_of_dialogue_token
-                    game_with_eod = copy.deepcopy(game)
+                    game_with_eod = copy.copy(game)  # Beware shallow copy!
                     game_with_eod.is_full_dialogue = True
                     game_with_eod.questions = game.questions + [end_of_dialogue]
                     game_with_eod.question_ids = game.question_ids + [max(game.question_ids) + 1]
@@ -103,15 +103,16 @@ class Seq2SeqBatchifier(AbstractBatchifier):
 
             # reward
             if "cum_reward" in self.sources and not skip_targets and not self.generate and not self.supervised:
-                full_game = game.user_data["full_game"]
-                total_number_question = len(full_game.question_ids) - int(game.user_data["has_stop_token"])
-                number_question_left = total_number_question - len(game.question_ids)
-                reward = int(game.status == "success") - number_question_left * 0.1
+                # full_game = game.user_data["full_game"]
+                # total_number_question = len(full_game.question_ids) - int(game.user_data["has_stop_token"])
+                # number_question_left = total_number_question - len(game.question_ids)
+                #  - number_question_left * 0.1
+                reward = int(game.status == "success")
                 batch["cum_reward"].append([reward] * len(batch["question"][i]))
 
         # Pad dialogue tokens tokens
         batch['dialogue'], batch['seq_length_dialogue'] = padder(batch['dialogue'], padding_symbol=self.tokenizer.padding_token)
-        batch['question'], batch['seq_length_question'] = padder(batch['question'], padding_symbol=self.tokenizer.padding_token)
+        batch[' question'], batch['seq_length_question'] = padder(batch['question'], padding_symbol=self.tokenizer.padding_token)
 
         if 'cum_reward' in batch:
             batch['cum_reward'], _ = padder(batch['cum_reward'], padding_symbol=0)

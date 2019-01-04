@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 from generic.tf_utils.optimizer import AccOptimizer
 from generic.data_provider.iterator import BasicIterator
 from generic.tf_utils.evaluator import Evaluator
@@ -38,10 +39,11 @@ class QGenWrapper(object):
     def policy_update(self, sess, games, optimizer):
 
         # ugly hack... to allow training on RL
-        self.batchifier.generate = False
-        self.batchifier.supervised = False
+        batchifier = copy.copy(self.batchifier)
+        batchifier.generate = False
+        batchifier.supervised = False
 
-        iterator = BasicIterator(games, batch_size=len(games), batchifier=self.batchifier)
+        iterator = BasicIterator(games, batch_size=len(games), batchifier=batchifier)
 
         # Check whether the gradient is accumulated
         if isinstance(optimizer, AccOptimizer):
@@ -59,11 +61,12 @@ class QGenWrapper(object):
     def sample_next_question(self, sess, games, mode):
 
         # ugly hack... to allow training on RL
-        self.batchifier.generate = True
-        self.batchifier.supervised = False
+        batchifier = copy.copy(self.batchifier)
+        batchifier.generate = True
+        batchifier.supervised = False
 
         # create the training batch
-        batch = self.batchifier.apply(games, skip_targets=True)
+        batch = batchifier.apply(games, skip_targets=True)
         batch["is_training"] = False
 
         # Sample

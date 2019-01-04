@@ -1,4 +1,4 @@
-import numpy as np
+import copy
 
 from generic.data_provider.iterator import BasicIterator
 from generic.tf_utils.evaluator import Evaluator

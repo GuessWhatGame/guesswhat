@@ -95,7 +95,7 @@ class QGenNetworkRNN(AbstractNetwork):
             self.decoder_projection_layer = tf.layers.Dense(num_words, use_bias=False)
 
             training_helper = tfc_seq.TrainingHelper(inputs=visword_emb_dialogue,  # The question is the target
-                                                     sequence_length=self._seq_length_dialogue - 1)  # -1 : remove start token at decoding time
+                                                     sequence_length=self._seq_length_dialogue - 1)
 
             # Define RNN states
             self.zero_states = self.decoder_cell.zero_state(tf.shape(self._seq_length_dialogue)[0], dtype=tf.float32)
@@ -104,21 +104,24 @@ class QGenNetworkRNN(AbstractNetwork):
                                             initial_state=self.zero_states,
                                             output_layer=self.decoder_projection_layer)
 
-            (self.decoder_outputs, self.decoder_states, _), _, _ = tfc_seq.dynamic_decode(decoder, maximum_iterations=None)
+            (self.decoder_outputs, self.states, _), self.final_states, _ = tfc_seq.dynamic_decode(decoder, maximum_iterations=None)
+
+            # Prepare sampling graph
+            self._new_answer = tf.placeholder(tf.int32, [batch_size], name='new_answer')
 
             #####################
             #   LOSS
             #####################
 
             # ignore answers while computing cross entropy or applying reward
-            mask = (self._question_mask - self._answer_mask)
+            self.mask = (self._question_mask - self._answer_mask)
 
             # compute the softmax for evaluation
             with tf.variable_scope('ml_loss'):
 
                 self.ml_loss = tfc_seq.sequence_loss(logits=self.decoder_outputs,
                                                      targets=target_dialogue,
-                                                     weights=mask,
+                                                     weights=self.mask,
                                                      average_across_timesteps=True,
                                                      average_across_batch=True)
 
@@ -132,42 +135,40 @@ class QGenNetworkRNN(AbstractNetwork):
 
                 self._cum_rewards = tf.placeholder(tf.float32, shape=[batch_size, None], name='cum_reward')[:, 1:]
 
-                with tf.variable_scope('rl_baseline'):
-                    decoder_out = tf.stop_gradient(self.decoder_states)  # take the LSTM output (and stop the gradient!)
-
-                    baseline_hidden = tfc_layers.fully_connected(decoder_out,
-                                                                 num_outputs=int(int(decoder_out.get_shape()[-1]) / 4),
-                                                                 activation_fn=tf.nn.relu,
-                                                                 scope='baseline_hidden',
-                                                                 reuse=reuse)
-
-                    baseline_out = tfc_layers.fully_connected(baseline_hidden,
-                                                              num_outputs=1,
-                                                              activation_fn=None,
-                                                              scope='baseline',
-                                                              reuse=reuse)
-                    self.baseline = tf.squeeze(baseline_out, axis=-1)
-
-                    self.baseline_loss = tf.square(self._cum_rewards - self.baseline)
-                    self.baseline_loss *= mask
-
-                    self.baseline_loss = tf.reduce_sum(self.baseline_loss, axis=1)
-                    self.baseline_loss = tf.reduce_mean(self.baseline_loss, axis=0)
+                # with tf.variable_scope('rl_baseline'):
+                #     decoder_out = tf.stop_gradient(self.states)  # take the LSTM output (and stop the gradient!)
+                #
+                #     baseline_hidden = tfc_layers.fully_connected(decoder_out,
+                #                                                  num_outputs=int(int(decoder_out.get_shape()[-1]) / 4),
+                #                                                  activation_fn=tf.nn.relu,
+                #                                                  scope='baseline_hidden',
+                #                                                  reuse=reuse)
+                #
+                #     baseline_out = tfc_layers.fully_connected(baseline_hidden,
+                #                                               num_outputs=1,
+                #                                               activation_fn=tf.nn.relu,
+                #                                               scope='baseline',
+                #                                               reuse=reuse)
+                #     self.baseline = tf.squeeze(baseline_out, axis=-1)
+                #
+                #     self.baseline_loss = tf.square(self._cum_rewards - self.baseline)
+                #     self.baseline_loss *= self.mask
+                #
+                #     self.baseline_loss = tf.reduce_sum(self.baseline_loss, axis=1)
+                #     self.baseline_loss = tf.reduce_mean(self.baseline_loss, axis=0)
 
                 with tf.variable_scope('policy_gradient_loss'):
                     self.log_of_policy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.decoder_outputs, labels=target_dialogue)
 
-                    self.policy_gradient_loss = tf.multiply(self.log_of_policy, self._cum_rewards - self.baseline)  # score function
-                    self.policy_gradient_loss *= mask
+                    self.policy_gradient_loss = tf.multiply(self.log_of_policy, self._cum_rewards)  # - self.baseline)  # score function
+                    self.policy_gradient_loss *= self.mask
 
                     self.policy_gradient_loss = tf.reduce_sum(self.policy_gradient_loss, axis=1)  # sum over the dialogue trajectory
-                    self.policy_gradient_loss = tf.reduce_mean(self.policy_gradient_loss, axis=0)  # reduce over minibatch dimension
+                    self.policy_gradient_loss = tf.reduce_mean(self.policy_gradient_loss, axis=0)  # reduce over batch dimension
 
-                    self.loss = self.policy_gradient_loss
+                    self.loss = self.policy_gradient_loss  # + self.baseline_loss
 
     def create_sampling_graph(self, start_token, stop_token, max_tokens):
-
-        batch_size = tf.shape(self._dialogue)[0]
 
         def embedding(idx):
             emb = tf.nn.embedding_lookup(params=self.dialogue_emb_weights, ids=idx)
@@ -175,11 +176,14 @@ class QGenNetworkRNN(AbstractNetwork):
             return emb
 
         sample_helper = tfc_seq.SampleEmbeddingHelper(embedding=embedding,
-                                                      start_tokens=tf.fill([batch_size], start_token),
+                                                      start_tokens=self._new_answer,
                                                       end_token=stop_token)
 
+        start_dialogue = tf.equal(self._new_answer, start_token)
+        initial_state = tf.where(start_dialogue, self.zero_states, self.final_states)
+
         decoder = tfc_seq.BasicDecoder(
-            self.decoder_cell, sample_helper, self.zero_states,
+            self.decoder_cell, sample_helper, initial_state,
             output_layer=self.decoder_projection_layer)
 
         (_, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
@@ -188,19 +192,20 @@ class QGenNetworkRNN(AbstractNetwork):
 
     def create_greedy_graph(self, start_token, stop_token, max_tokens):
 
-        batch_size = tf.shape(self._dialogue)[0]
-
         def embedding(idx):
             emb = tf.nn.embedding_lookup(params=self.dialogue_emb_weights, ids=idx)
             emb = tf.concat([emb, self.visual_features], axis=-1)
             return emb
 
         greedy_helper = tfc_seq.GreedyEmbeddingHelper(embedding=embedding,
-                                                      start_tokens=tf.fill([batch_size], start_token),
+                                                      start_tokens=self._new_answer,
                                                       end_token=stop_token)
 
+        start_dialogue = tf.equal(self._new_answer, start_token)
+        initial_state = tf.where(start_dialogue, self.zero_states, self.final_states)
+
         decoder = tfc_seq.BasicDecoder(
-            self.decoder_cell, greedy_helper, self.zero_states,
+            self.decoder_cell, greedy_helper, initial_state,
             output_layer=self.decoder_projection_layer)
 
         (_, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
@@ -210,8 +215,9 @@ class QGenNetworkRNN(AbstractNetwork):
     def create_beam_graph(self, start_token, stop_token, max_tokens, k_best):
 
         # create k_beams
-        decoder_initial_state = tf.contrib.seq2seq.tile_batch(
-            self.zero_states, multiplier=k_best)
+        start_dialogue = tf.equal(self._new_answer, start_token)
+        decoder_initial_state = tf.where(start_dialogue, self.zero_states, self.final_states)
+        decoder_initial_state = tf.contrib.seq2seq.tile_batch(decoder_initial_state, multiplier=k_best)
 
         def embedding(idx):
             emb = tf.nn.embedding_lookup(params=self.dialogue_emb_weights, ids=idx)
@@ -223,11 +229,10 @@ class QGenNetworkRNN(AbstractNetwork):
             return emb
 
         # Define a beam-search decoder
-        batch_size = tf.shape(self._dialogue)[0]
         decoder = tfc_seq.BeamSearchDecoder(
             cell=self.decoder_cell,
             embedding=embedding,
-            start_tokens=tf.fill([batch_size], start_token),
+            start_tokens=self._new_answer,
             end_token=stop_token,
             initial_state=decoder_initial_state,
             beam_width=k_best,
@@ -243,6 +248,10 @@ class QGenNetworkRNN(AbstractNetwork):
 
     def get_accuracy(self):
         return self.loss
+
+    @staticmethod
+    def is_seq2seq():
+        return False
 
 
 if __name__ == "__main__":

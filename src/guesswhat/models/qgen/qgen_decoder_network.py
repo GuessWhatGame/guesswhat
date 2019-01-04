@@ -263,6 +263,10 @@ class QGenNetworkDecoder(AbstractNetwork):
     def get_accuracy(self):
         return self.loss
 
+    @staticmethod
+    def is_seq2seq():
+        return False
+
 
 if __name__ == "__main__":
     import json

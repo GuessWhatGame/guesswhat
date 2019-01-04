@@ -61,9 +61,6 @@ class Game(object):
             self.image.image_loader.bufferize()
         if self.object.crop_loader is not None:
             self.object.crop_loader.bufferize()
-        # for obj in self.objects:
-        #     if obj.crop_loader is not None:
-        #         obj.crop_loader.bufferize()
 
     # Optimization to unload image/crop outside the memory
     def flush(self):
@@ -166,6 +163,7 @@ class Object(object):
                                                 h=image.height,
                                                 w=image.width)
 
+        self.crop_loader = None
         if crop_builder is not None:
             filename = "{}.jpg".format(image.id)
             self.crop_loader = crop_builder.build(id, filename=filename, which_set=which_set, bbox=bbox)
@@ -249,7 +247,7 @@ class CropDataset(AbstractDataset):
     def split(self, game):
         games = []
         for obj in game.objects:
-            new_game = copy.deepcopy(game)
+            new_game = copy.copy(game)
             new_game.questions = [""]
             new_game.question_ids = [0]
             new_game.answers = [""]
@@ -267,13 +265,13 @@ class CropDataset(AbstractDataset):
 
     def update_ref(self, game):
 
-        new_game = copy.deepcopy(game)
+        new_game = copy.copy(game)  # Beware shallow copy!
         new_game.questions = [""]
         new_game.question_ids = [0]
         new_game.answers = [""]
 
         # Hack the image id to differentiate objects
-        new_game.image = copy.deepcopy(game.image)
+        new_game.image = copy.copy(game.image)  # Beware shallow copy!
         new_game.image.id = game.object.id
 
         return [new_game]

@@ -54,7 +54,7 @@ if __name__ == '__main__':
 
     # Load image
     image_builder, crop_builder = None, None
-    use_resnet = False
+    use_resnet, use_multiproc = False, False
     if config["model"]['inputs'].get('image', False):
         logger.info('Loading images..')
         image_builder = get_img_builder(config['model']['image'], args.img_dir)
@@ -130,8 +130,7 @@ if __name__ == '__main__':
                                       shuffle=False)
             [valid_loss] = evaluator.process(sess, valid_iterator, outputs=outputs, listener=listener)
 
-            question_tokens = listener._results
-            for qt in question_tokens[:5]:
+            for qt in listener.get_questions()[:5]:
                 logger.info(tokenizer.decode(qt))
 
             logger.info("Training loss   : {}".format(train_loss))
@@ -145,7 +144,7 @@ if __name__ == '__main__':
 
         # Load early stopping
         xp_manager.load_checkpoint(sess, saver, load_best=True)
-        cpu_pool = create_cpu_pool(args.no_thread, use_process=image_builder.require_multiprocess())
+        cpu_pool = create_cpu_pool(args.no_thread, use_process=use_multiproc)
 
         # Create Listener
         test_iterator = Iterator(testset, pool=cpu_pool,

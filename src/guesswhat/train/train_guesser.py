@@ -165,8 +165,8 @@ if __name__ == '__main__':
         test_accuracy = listener.accuracy()
 
         logger.info("Testing loss: {}".format(test_loss))
-        logger.info("Testing accuracy: {}".format(test_accuracy))
         logger.info("Testing error: {}".format(1-test_accuracy))
+        logger.info("Testing accuracy: {}".format(test_accuracy))
 
         # Save the test scores
         xp_manager.update_user_data(

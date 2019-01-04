@@ -29,8 +29,8 @@
 
   "optimizer": {
     "no_epoch": 30,
-    "learning_rate": 1e-4,
-    "batch_size": 32,
+    "learning_rate": 1e-3,
+    "batch_size": 64,
     "clip_val": 5.0,
     "weight_decay": 0,
     "weight_decay_add": [],
