@@ -350,11 +350,11 @@ year = {2017}
 
 Reinforcement Learning applied to GuessWhat?! - https://arxiv.org/abs/1703.05423
 ```
-@inproceedings{end_to_end_gw,
-author = {Florian Strub and Harm de Vries and J\'er\'emie Mary and Bilal Piot and Aaron C. Courville and Olivier Pietquin},
-title = {End-to-end optimization of goal-driven and visually grounded dialogue systems},
-booktitle = {International Joint Conference on Artificial Intelligence (IJCAI)},
-year = {2017}
+@inproceedings{strub2017end,
+  title={End-to-end optimization of goal-driven and visually grounded dialogue systems},
+  author={Strub, Florian and De Vries, Harm and Mary, Jeremie and Piot, Bilal and Courville, Aaron and Pietquin, Olivier},
+  booktitle={Proceedings of international joint conference on artificial intelligenc (IJCAI)},
+  year={2017}
 }
 ```
 
