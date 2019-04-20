@@ -30,10 +30,10 @@ class GuesserCropBatchifier(AbstractBatchifier):
                 new_game.object = obj
                 new_game.user_data = {"is_target_object": (obj.id == game.object.id)}
 
-                # Filter ill-formated questions with stop_dialogues tokens
+                # Remove questions with stop_dialogues tokens (as it will be add in apply())
                 if self.tokenizer.stop_dialogue_word in game.questions[-1]:
                     new_game.questions = game.questions[:-1]
-                    new_game.questions_ids = game.questions_ids[:-1]
+                    new_game.question_ids = game.question_ids[:-1]
 
                 new_games.append(new_game)
 

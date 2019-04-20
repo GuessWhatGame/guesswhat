@@ -21,14 +21,14 @@ class QGenWrapper(object):
 
         self.ops["greedy"] = qgen.create_greedy_graph(start_token=tokenizer.start_token,
                                                       stop_token=tokenizer.stop_token,
-                                                      max_tokens=max_length)
+                                                      max_tokens=max_length), 0
 
         beam, seq_length = qgen.create_beam_graph(start_token=tokenizer.start_token,
                                                   stop_token=tokenizer.stop_token,
                                                   max_tokens=max_length,
                                                   k_best=k_best)
         # Only keep best beam
-        self.ops["beam"] = (beam.predicted_ids[:, :, 0], seq_length[:, 0])
+        self.ops["beam"] = (beam.predicted_ids[:, :, 0], seq_length[:, 0]), beam.predicted_ids[:, :, 0]*0  # no state_values
 
         self.evaluator = None
 
@@ -70,11 +70,11 @@ class QGenWrapper(object):
         batch["is_training"] = False
 
         # Sample
-        tokens, seq_length = self.evaluator.execute(sess, output=self.ops[mode], batch=batch)
+        tokens, seq_length, state_values = self.evaluator.execute(sess, output=self.ops[mode], batch=batch)
 
         # Update game
         new_games = []
-        for game, question_tokens, l in zip(games, tokens, seq_length):
+        for game, question_tokens, l, state_value in zip(games, tokens, seq_length, state_values):
 
             if not game.user_data["has_stop_token"]:  # stop adding question if dialogue is over
 
@@ -86,6 +86,9 @@ class QGenWrapper(object):
                 # Append the newly generated question
                 game.questions.append(self.tokenizer.decode(question_tokens[:l]))
                 game.question_ids.append(len(game.question_ids))
+
+                game.user_data["state_values"] = game.user_data.get("state_values", [])
+                game.user_data["state_values"].append(state_value[:l].tolist())
 
             new_games.append(game)
 

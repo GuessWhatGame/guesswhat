@@ -14,8 +14,8 @@ from neural_toolbox.reading_unit import create_reading_unit, create_film_layer_w
 
 
 class FiLM_Oracle(ResnetModel):
-    def __init__(self, config, num_words, num_answers, reuse=False, device=''):
-        ResnetModel.__init__(self, "oracle", device=device)
+    def __init__(self, config, num_words, num_answers, reuse=False, device='', name='oracle'):
+        ResnetModel.__init__(self, name, device=device)
 
         with tf.variable_scope(self.scope_name, reuse=reuse):
 

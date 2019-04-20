@@ -13,7 +13,7 @@
       "word_embedding_dim": 512,
       "cell": "gru",
       "rnn_units": 1024,
-      "layer_norm" : false
+      "layer_norm" : true
     },
 
     "image": {

@@ -100,13 +100,13 @@ class OracleNetwork(ResnetModel):
                                                    config=config['crop'],
                                                    cbn=cbn)
 
-                if len(self.image_out.get_shape()) > 2:
+                if len(self.crop_out.get_shape()) > 2:
                     with tf.variable_scope("crop_pooling"):
-                        self.image_out = get_attention(self.crop_out, last_rnn_state,
-                                                       is_training=self._is_training,
-                                                       config=config["pooling"],
-                                                       dropout_keep=dropout_keep,
-                                                       reuse=reuse)
+                        self.crop_out = get_attention(self.crop_out, last_rnn_state,
+                                                      is_training=self._is_training,
+                                                      config=config["pooling"],
+                                                      dropout_keep=dropout_keep,
+                                                      reuse=reuse)
 
                 embeddings.append(self.crop_out)
                 print("Input: Crop")

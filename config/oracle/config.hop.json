@@ -1,5 +1,5 @@
 {
-  "name" : "Multi-Hop FiLM + (img before)",
+  "name" : "Multi-Hop FiLM ",
 
   "model": {
 
@@ -38,7 +38,7 @@
       "mask": false,
 
       "reading_unit": {
-        "reading_unit_type" : "none",
+        "reading_unit_type" : "basic",
 
         "attention_hidden_units": 0,
         "shared_attention": true,
@@ -54,7 +54,7 @@
 
     "image": {
       "image_input": "conv",
-      "dim": [14, 14, 2048],
+      "dim": [14, 14, 1024],
       "normalize": false
     },
 
@@ -100,14 +100,14 @@
     {
       "inputs" :
       {
-       "question": false,
-       "category": false,
-       "spatial": false
+       "question": true,
+       "category": true,
+       "spatial": true
       },
       "no_mlp_units": 512
     },
 
-    "dropout_keep_prob" : 0.5
+    "dropout_keep_prob" : 1.0
 
   },
 
@@ -118,7 +118,8 @@
     "clip_val": 10.0,
     "weight_decay": 5e-6,
     "weight_decay_add": ["film_stack"],
-    "weight_decay_remove": ["feedback_loop", "FiLM_layer"]
+    "weight_decay_remove": ["feedback_loop", "FiLM_layer"],
+    "gradient_noise_std": 0.01
   },
 
   "status": ["success"],

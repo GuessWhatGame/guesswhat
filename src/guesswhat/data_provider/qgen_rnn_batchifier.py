@@ -4,15 +4,21 @@ import collections
 from generic.data_provider.batchifier import AbstractBatchifier
 from generic.data_provider.nlp_utils import padder
 
+def flatten(x):
+    if isinstance(x, collections.Iterable):
+        return [a for i in x for a in flatten(i)]
+    else:
+        return [x]
 
 class RNNBatchifier(AbstractBatchifier):
 
-    def __init__(self, tokenizer, sources, status=list(), supervised=False, generate=False):
+    def __init__(self, tokenizer, sources, status=list(), supervised=False, generate=False, reward_type="MC"):
         self.sources = sources
         self.status = status
         self.tokenizer = tokenizer
         self.supervised = supervised
         self.generate = generate
+        self.reward_type = reward_type
 
     def filter(self, games):
 
@@ -54,8 +60,31 @@ class RNNBatchifier(AbstractBatchifier):
 
             # reward
             if "cum_reward" in self.sources and not skip_targets and not self.supervised:
+
+                # if self.reward_type == "monte_carlo":
                 reward = int(game.status == "success")
                 batch["cum_reward"].append([reward] * len(batch["dialogue"][i]))
+                #
+                # if self.reward_type == "n_step":
+                # n = 0
+                # reward = [0] * len(batch["dialogue"][i])
+                # reward[-1] = int(game.status == "success")
+                #
+                # values = []
+                # for qv in game.user_data["state_values"]:
+                #     values += qv
+                #     values += [0.]
+                #
+                # next_values = []
+                # for i, (tok, next_tok) in enumerate(zip(dialogue_tokens, dialogue_tokens[1:])):
+                #     if tok == self.tokenizer.stop_token:
+                #         next_values += [0.]
+                #     if next_tok == self.tokenizer.stop_token:
+                #         next_values += [reward[i + 2] + values[i+2]]
+                #     else:
+                #         next_values += [reward[i + 1] + values[i + 1]]
+
+
 
         # Pad dialogue tokens tokens
         batch['dialogue'], batch['seq_length_dialogue'] = padder(batch['dialogue'], padding_symbol=self.tokenizer.padding_token)

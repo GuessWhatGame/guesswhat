@@ -84,12 +84,12 @@ class CropAccuracyListener(EvaluatorListener):
 
     def results(self):
 
-        results = dict()
+        res = dict()
 
-        for game_id, objects in self.scores.item():
+        for game_id, objects in self.scores.items():
 
             # Compute softmax
-            norm = sum(math.exp(obj[0]) for obj in objects)
+            norm = sum(math.exp(obj[0]) for obj in objects.values())
             softmax = {}
             for object_id, obj in objects.items():
                 softmax[object_id] = math.exp(obj[0]) / norm
@@ -97,13 +97,13 @@ class CropAccuracyListener(EvaluatorListener):
             # retrieve success/failure
             select_object = max(objects.values(), key=lambda v: v[0])
 
-            results[game_id] = dict(
+            res[game_id] = dict(
                 success=select_object[1],
                 id_guess_object=select_object[2],
                 softmax=softmax
             )
 
-        return results
+        return res
 
     def accuracy(self):
 

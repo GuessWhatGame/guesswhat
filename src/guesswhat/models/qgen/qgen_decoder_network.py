@@ -1,7 +1,5 @@
 import tensorflow as tf
 
-import tensorflow.contrib.layers as tfc_layers
-
 from neural_toolbox import rnn
 
 from generic.tf_factory.image_factory import get_image_features
@@ -17,8 +15,10 @@ from neural_toolbox.film_stack import FiLM_Stack
 
 class QGenNetworkDecoder(AbstractNetwork):
 
-    def __init__(self, config, num_words, policy_gradient, device='', reuse=False):
+    def __init__(self, config, num_words, rl_module, device='', reuse=False):
         AbstractNetwork.__init__(self, "qgen", device=device)
+
+        self.rl_module = rl_module
 
         # Create the scope for this graph
         with tf.variable_scope(self.scope_name, reuse=reuse):
@@ -118,7 +118,7 @@ class QGenNetworkDecoder(AbstractNetwork):
             input_question = self._question[:, :-1]  # Ignore start token
             target_question = self._question[:, 1:]  # Ignore stop token
 
-            self._question_mask = tf.sequence_mask(lengths=self._seq_length_question - 1, dtype=tf.float32)  # -1 : remove start token a decoding time
+            self.mask = tf.sequence_mask(lengths=self._seq_length_question - 1, dtype=tf.float32)  # -1 : remove start token a decoding time
 
             if config["dialogue"]["share_decoder_emb"]:
                 self.question_emb_weights = self.dialogue_emb_weights
@@ -138,16 +138,16 @@ class QGenNetworkDecoder(AbstractNetwork):
                                                 layer_norm=config["decoder"]["layer_norm"],
                                                 reuse=reuse)
 
-            self.decoder_projection_layer = tf.layers.Dense(num_words, use_bias=False)
+            self.decoder_states, _ = tf.nn.dynamic_rnn(
+                cell=self.decoder_cell,
+                inputs=self.word_emb_question,
+                dtype=tf.float32,
+                initial_state=self.visdiag_embedding,
+                sequence_length=self._seq_length_question - 1,
+                scope="decoder")
 
-            training_helper = tfc_seq.TrainingHelper(inputs=self.word_emb_question,  # The question is the target
-                                                     sequence_length=self._seq_length_question - 1)  # -1 : remove start token at decoding time
-            decoder = BasicDecoderWithState(cell=self.decoder_cell,
-                                            helper=training_helper,
-                                            initial_state=self.visdiag_embedding,
-                                            output_layer=self.decoder_projection_layer)
-
-            (self.decoder_outputs, self.decoder_states, _), _, _ = tfc_seq.dynamic_decode(decoder, maximum_iterations=None)
+            self.decoder_projection_layer = tf.layers.Dense(num_words)
+            self.decoder_outputs = self.decoder_projection_layer(self.decoder_states)
 
             #####################
             #   LOSS
@@ -158,7 +158,7 @@ class QGenNetworkDecoder(AbstractNetwork):
 
                 self.ml_loss = tfc_seq.sequence_loss(logits=self.decoder_outputs,
                                                      targets=target_question,
-                                                     weights=self._question_mask,
+                                                     weights=self.mask,
                                                      average_across_timesteps=True,
                                                      average_across_batch=True)
 
@@ -168,42 +168,35 @@ class QGenNetworkDecoder(AbstractNetwork):
                 self.loss = self.ml_loss
 
             # Compute policy gradient
-            if policy_gradient:
+            if self.rl_module is not None:
+
+                # Step 1: compute the state-value function
                 self._cum_rewards = tf.placeholder(tf.float32, shape=[batch_size, None], name='cum_reward')[:, 1:]
+                self._cum_rewards *= self.mask
 
-                with tf.variable_scope('rl_baseline'):
-                    baseline_input = tf.stop_gradient(self.decoder_states)
+                # Step 2: compute the state-value function
+                value_state = self.decoder_states
+                if self.rl_module.stop_gradient:
+                    value_state = tf.stop_gradient(self.decoder_states)
+                v_num_hidden_units = int(int(value_state.get_shape()[-1]) / 4)
 
-                    self.baseline_hidden = tfc_layers.fully_connected(baseline_input,
-                                                                 num_outputs=int(int(baseline_input.get_shape()[-1]) / 4),
-                                                                 activation_fn=tf.nn.relu,
-                                                                 scope='baseline_hidden',
-                                                                 reuse=reuse)
+                with tf.variable_scope('value_function'):
+                    self.value_function = tf.keras.models.Sequential()
+                    self.value_function.add(tf.layers.Dense(units=v_num_hidden_units,
+                                                            activation=tf.nn.relu,
+                                                            input_shape=(int(value_state.get_shape()[-1]),),
+                                                            name="value_function_hidden"))
+                    self.value_function.add(tf.layers.Dense(units=1,
+                                                            activation=None,
+                                                            name="value_function"))
+                    self.value_function.add(tf.keras.layers.Reshape((-1,)))
 
-                    self.baseline_out = tfc_layers.fully_connected(self.baseline_hidden,
-                                                              num_outputs=1,
-                                                              activation_fn=None,
-                                                              scope='baseline',
-                                                              reuse=reuse)
-                    self.baseline = tf.squeeze(self.baseline_out, axis=-1)
-
-                    self.baseline_loss = tf.square(self._cum_rewards - self.baseline)
-                    self.baseline_loss *= self._question_mask
-
-                    self.baseline_loss = tf.reduce_sum(self.baseline_loss, axis=1)
-                    self.baseline_loss = tf.reduce_mean(self.baseline_loss, axis=0)
-
-                with tf.variable_scope('policy_gradient_loss'):
-                    self.log_of_policy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.decoder_outputs, labels=target_question)
-
-                    self.policy_gradient_loss = tf.multiply(self.log_of_policy, self._cum_rewards - self.baseline)  # score function
-                    self.policy_gradient_loss *= self._question_mask
-
-                    self.policy_gradient_loss = tf.reduce_sum(self.policy_gradient_loss, axis=1)  # sum over the dialogue trajectory
-                    self.policy_gradient_loss = tf.reduce_mean(self.policy_gradient_loss, axis=0)  # reduce over mini-batch dimension
-
-                    # Note that we can sum loss as there are independent (because of stop_gradient, otherwise we should reweigh them)
-                    self.loss = self.policy_gradient_loss + self.baseline_loss
+                # Step 3: compute the RL loss (reinforce, A3C, PPO etc.)
+                self.loss = rl_module(cum_rewards=self._cum_rewards,
+                                      value_function=self.value_function(value_state),
+                                      policy_state=self.decoder_outputs,
+                                      actions=target_question,
+                                      action_mask=self.mask)
 
     def create_sampling_graph(self, start_token, stop_token, max_tokens):
 
@@ -212,13 +205,18 @@ class QGenNetworkDecoder(AbstractNetwork):
                                                       start_tokens=tf.fill([batch_size], start_token),
                                                       end_token=stop_token)
 
-        decoder = tfc_seq.BasicDecoder(
-            self.decoder_cell, sample_helper, self.visdiag_embedding,
-            output_layer=self.decoder_projection_layer)
+        decoder = BasicDecoderWithState(cell=self.decoder_cell,
+                                        helper=sample_helper,
+                                        initial_state=self.visdiag_embedding,
+                                        output_layer=self.decoder_projection_layer)
 
-        (_, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
+        (_, states, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
 
-        return sample_id, seq_length
+        state_value = sample_id * 0
+        if self.rl_module is not None:
+            state_value = self.value_function(states)
+
+        return sample_id, seq_length, state_value
 
     def create_greedy_graph(self, start_token, stop_token, max_tokens):
 
@@ -227,13 +225,18 @@ class QGenNetworkDecoder(AbstractNetwork):
                                                       start_tokens=tf.fill([batch_size], start_token),
                                                       end_token=stop_token)
 
-        decoder = tfc_seq.BasicDecoder(
-            self.decoder_cell, greedy_helper, self.visdiag_embedding,
-            output_layer=self.decoder_projection_layer)
+        decoder = BasicDecoderWithState(cell=self.decoder_cell,
+                                        helper=greedy_helper,
+                                        initial_state=self.visdiag_embedding,
+                                        output_layer=self.decoder_projection_layer)
 
-        (_, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
+        (_, states, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
 
-        return sample_id, seq_length
+        state_value = sample_id * 0
+        if self.rl_module is not None:
+            state_value = self.value_function(states)
+
+        return sample_id, seq_length, state_value
 
     def create_beam_graph(self, start_token, stop_token, max_tokens, k_best):
 

@@ -72,7 +72,7 @@ if __name__ == '__main__':
         logger.info('Loading crops..')
         crop_builder = get_img_builder(config['model']['crop'], args.crop_dir, is_crop=True)
         use_resnet = crop_builder.is_raw_image()
-        use_process |= image_builder.require_multiprocess()
+        use_process |= crop_builder.require_multiprocess()
 
     # Load data
     logger.info('Loading data..')
@@ -104,11 +104,6 @@ if __name__ == '__main__':
 
     # create a saver to store/load checkpoint
     saver = tf.train.Saver()
-    resnet_saver = None
-
-    # Retrieve only resnet variables
-    if use_resnet:
-        resnet_saver = create_resnet_saver([network])
 
     # CPU/GPU option
     gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=args.gpu_ratio)
@@ -117,11 +112,6 @@ if __name__ == '__main__':
 
         sources = network.get_sources(sess)
         logger.info("Sources: " + ', '.join(sources))
-
-        sess.run(tf.global_variables_initializer())
-        if use_resnet:
-            resnet_version = config['model']["image"]['resnet_version']
-            resnet_saver.restore(sess, os.path.join(args.data_dir, 'resnet_v1_{}.ckpt'.format(resnet_version)))
 
         sess.run(tf.global_variables_initializer())
         if args.continue_exp or args.load_checkpoint is not None:

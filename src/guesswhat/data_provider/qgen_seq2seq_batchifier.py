@@ -112,7 +112,7 @@ class Seq2SeqBatchifier(AbstractBatchifier):
 
         # Pad dialogue tokens tokens
         batch['dialogue'], batch['seq_length_dialogue'] = padder(batch['dialogue'], padding_symbol=self.tokenizer.padding_token)
-        batch[' question'], batch['seq_length_question'] = padder(batch['question'], padding_symbol=self.tokenizer.padding_token)
+        batch['question'], batch['seq_length_question'] = padder(batch['question'], padding_symbol=self.tokenizer.padding_token)
 
         if 'cum_reward' in batch:
             batch['cum_reward'], _ = padder(batch['cum_reward'], padding_symbol=0)

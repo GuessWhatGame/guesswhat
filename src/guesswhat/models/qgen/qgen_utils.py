@@ -11,7 +11,6 @@ class BasicDecoderWithStateOutput(
     """ Basic Decoder Named Tuple with rnn_output, rnn_state, and sample_id """
     pass
 
-
 class BasicDecoderWithState(tfc_seq.BasicDecoder):
 
     def __init__(self, cell, helper, initial_state, output_layer=None):

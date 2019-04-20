@@ -56,7 +56,7 @@ def test_models(sess, dataset, cpu_pool, batch_size,
     logger.info("QGen test loss: {}".format(guesser_loss))
 
 
-def compute_qgen_accuracy(sess, dataset, batchifier, looper, mode, cpu_pool, batch_size, store_games=False):
+def compute_qgen_accuracy(sess, dataset, batchifier, looper, mode, cpu_pool, batch_size, name, save_path, store_games=False):
 
     logger = logging.getLogger()
 
@@ -66,10 +66,58 @@ def compute_qgen_accuracy(sess, dataset, batchifier, looper, mode, cpu_pool, bat
                                  batchifier=batchifier,
                                  shuffle=False)
 
-        [test_score, _] = looper.process(sess, test_iterator, mode=m, store_games=store_games)
+        [test_score, games] = looper.process(sess, test_iterator, mode=m, store_games=store_games)
 
         logger.info("Accuracy ({} - {}): {}".format(dataset.set, m, test_score))
 
+        if store_games:
+            dump_dataset(games,
+                         save_path=save_path,
+                         tokenizer=looper.tokenizer,
+                         name=name + "." + m)
+
+
+def dump_dataset(games, save_path, tokenizer, name="model"):
+    import gzip
+    import os
+    import json
+
+    with gzip.open(os.path.join(save_path, 'guesswhat.' + name + '.jsonl.gz'), 'wb') as f:
+
+        for _, game in enumerate(games):
+
+            sample = {}
+
+            qas = []
+            for id, question, answers in zip(game.question_ids, game.questions, game.answers):
+                qas.append({"question": question,
+                            "answer": answers,
+                            "id": id,
+                            "p": 0})
+
+            sample["id"] = game.dialogue_id
+            sample["qas"] = qas
+            sample["image"] = {
+                "id": game.image.id,
+                "width": game.image.width,
+                "height": game.image.height,
+                "coco_url": game.image.url
+            }
+
+            sample["objects"] = [{"id": o.id,
+                                  "category_id": o.category_id,
+                                  "category": o.category,
+                                  "area": o.area,
+                                  "bbox": o.bbox.coco_bbox,
+                                  "segment": o.segment,  # no segment to avoid making the file too big
+                                  } for o in game.objects]
+
+            sample["object_id"] = game.object.id
+            sample["guess_object_id"] = game.id_guess_object
+            sample["status"] = game.status
+
+            f.write(str(json.dumps(sample)).encode())
+            f.write(b'\n')
 
 # def compute_qgen_accuracy(sess, dataset, batchifier, evaluator, mode, tokenizer, save_path, cpu_pool, batch_size, store_games, dump_suffix):
 #
@@ -85,9 +133,6 @@ def compute_qgen_accuracy(sess, dataset, batchifier, looper, mode, cpu_pool, bat
 #         # Retrieve the generated games and dump them as a dataset
 #         if store_games:
 #             generated_dialogues = evaluator.get_storage()
-#             dump_samples_into_dataset(generated_dialogues,
-#                                       save_path=save_path,
-#                                       tokenizer=tokenizer,
-#                                       name=dump_suffix + "." + m)
+#
 #
 #         logger.info("Accuracy ({} - {}): {}".format(dataset.set, m, test_score))

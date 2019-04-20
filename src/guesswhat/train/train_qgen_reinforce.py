@@ -9,12 +9,13 @@ import tensorflow as tf
 from generic.utils.thread_pool import create_cpu_pool
 from generic.utils.config import load_config, get_config_from_xp
 
-from generic.tf_utils.evaluator import Evaluator
 from generic.tf_utils.optimizer import create_optimizer
 
 from generic.data_provider.image_loader import get_img_builder
 from generic.data_provider.iterator import Iterator
+from generic.tf_utils.evaluator import Evaluator
 
+from guesswhat.models.qgen.rl_module import PolicyGradient
 from guesswhat.models.qgen.qgen_factory import create_qgen
 from guesswhat.models.guesser.guesser_factory import create_guesser
 from guesswhat.models.oracle.oracle_factory import create_oracle
@@ -45,9 +46,6 @@ if __name__ == '__main__':
     parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
 
     parser.add_argument("-networks_dir", type=str, help="Directory with pretrained networks")
-    parser.add_argument("-oracle_identifier", type=str, required=True , help='Oracle identifier')  # Use checkpoint id instead?
-    parser.add_argument("-qgen_identifier", type=str, required=True, help='Qgen identifier')
-    parser.add_argument("-guesser_identifier", type=str, required=True, help='Guesser identifier')
 
     parser.add_argument("-continue_exp", type=lambda x: bool(strtobool(x)), default="False", help="Continue previously started experiment?")
     parser.add_argument("-load_checkpoint", type=str, help="Start from checkpoint?")
@@ -66,9 +64,9 @@ if __name__ == '__main__':
     logger = logging.getLogger()
 
     # Load all  networks configs
-    oracle_config = get_config_from_xp(os.path.join(args.networks_dir, "oracle"), args.oracle_identifier)
-    guesser_config = get_config_from_xp(os.path.join(args.networks_dir, "guesser"), args.guesser_identifier)
-    qgen_config = get_config_from_xp(os.path.join(args.networks_dir, "qgen"), args.qgen_identifier)
+    oracle_config = get_config_from_xp(os.path.join(args.networks_dir, "oracle"), loop_config["oracle_identifier"])
+    guesser_config = get_config_from_xp(os.path.join(args.networks_dir, "guesser"), loop_config["guesser_identifier"])
+    qgen_config = get_config_from_xp(os.path.join(args.networks_dir, "qgen"), loop_config["qgen_identifier"])
 
     ###############################
     #  LOAD DATA
@@ -97,9 +95,11 @@ if __name__ == '__main__':
     #  LOAD NETWORKS
     #############################
 
+    rl_module = PolicyGradient(stop_gradient=True)
+
     logger.info('Building networks..')
 
-    qgen_network, qgen_batchifier_cstor = create_qgen(qgen_config["model"], num_words=tokenizer.no_words, policy_gradient=True)
+    qgen_network, qgen_batchifier_cstor = create_qgen(qgen_config["model"], num_words=tokenizer.no_words, rl_module=rl_module)
     qgen_var = [v for v in tf.global_variables() if "qgen" in v.name]  # and 'rl_baseline' not in v.name
     qgen_saver = tf.train.Saver(var_list=qgen_var)
 
@@ -118,10 +118,8 @@ if __name__ == '__main__':
     #############################
 
     logger.info('Building optimizer..')
-    pg_variables = [v for v in tf.trainable_variables() if "qgen" in v.name and 'rl_baseline' not in v.name]
     optimizer, _ = create_optimizer(qgen_network, loop_config["optimizer"],
-                                    var_list=pg_variables,
-                                    optim_cst=tf.train.GradientDescentOptimizer,  # tf.train.AdamOptimizer,
+                                    optim_cst=eval("tf.train." + loop_config["optimizer"]["name"]),
                                     accumulate_gradient=qgen_network.is_seq2seq())
 
     ###############################
@@ -149,13 +147,13 @@ if __name__ == '__main__':
         if args.continue_exp or args.load_checkpoint is not None:
             start_epoch = xp_manager.load_checkpoint(sess, qgen_saver)
         else:
-            qgen_var_supervized = [v for v in tf.global_variables() if "qgen" in v.name and 'rl_baseline' not in v.name]
+            qgen_var_supervized = [v for v in tf.global_variables() if "qgen" in v.name and 'value_function' not in v.name]
             qgen_loader_supervized = tf.train.Saver(var_list=qgen_var_supervized)
-            qgen_loader_supervized.restore(sess, os.path.join(args.networks_dir, 'qgen', args.qgen_identifier, 'best', 'params.ckpt'))
+            qgen_loader_supervized.restore(sess, os.path.join(args.networks_dir, 'qgen', loop_config["qgen_identifier"], 'best', 'params.ckpt'))
             start_epoch = 0
 
-        oracle_saver.restore(sess, os.path.join(args.networks_dir, 'oracle', args.oracle_identifier, 'best', 'params.ckpt'))
-        guesser_saver.restore(sess, os.path.join(args.networks_dir, 'guesser', args.guesser_identifier, 'best', 'params.ckpt'))
+        oracle_saver.restore(sess, os.path.join(args.networks_dir, 'oracle', loop_config["oracle_identifier"], 'best', 'params.ckpt'))
+        guesser_saver.restore(sess, os.path.join(args.networks_dir, 'guesser', loop_config["guesser_identifier"], 'best', 'params.ckpt'))
 
         # create training tools
         loop_sources = qgen_network.get_sources(sess)
@@ -191,20 +189,22 @@ if __name__ == '__main__':
         evaluator = Evaluator(loop_sources, qgen_network.scope_name, network=qgen_network, tokenizer=tokenizer)
         cpu_pool = create_cpu_pool(args.no_thread, use_process=False)
 
-        # logger.info(">>>  Initial models  <<<")
-        # test_models(sess, testset, cpu_pool=cpu_pool, batch_size=batch_size*2,
-        #             oracle=oracle_network, oracle_batchifier=oracle_batchifier,
-        #             guesser=guesser_network, guesser_batchifier=guesser_batchifier, guesser_listener=guesser_listener,
-        #             qgen=qgen_network, qgen_batchifier=qgen_batchifier)
-        #
-        # logger.info(">>>  New Objects  <<<")
-        # compute_qgen_accuracy(sess, trainset, batchifier=train_batchifier, looper=game_engine,
-        #                       mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size)
-        #
-        # logger.info(">>>  New Games  <<<")
-        # compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, looper=game_engine,
-        #                       mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size)
-        # logger.info(">>>------------------------------------------------<<<")
+        logger.info(">>>  Initial models  <<<")
+        test_models(sess, testset, cpu_pool=cpu_pool, batch_size=batch_size*2,
+                    oracle=oracle_network, oracle_batchifier=oracle_batchifier,
+                    guesser=guesser_network, guesser_batchifier=guesser_batchifier, guesser_listener=guesser_listener,
+                    qgen=qgen_network, qgen_batchifier=qgen_batchifier)
+
+        logger.info(">>>  New Objects  <<<")
+        compute_qgen_accuracy(sess, trainset, batchifier=train_batchifier, looper=game_engine,
+                              mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size,
+                              name="ini.new_object", save_path=xp_manager.dir_xp, store_games=True)
+
+        logger.info(">>>  New Games  <<<")
+        compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, looper=game_engine,
+                              mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size,
+                              name="ini.new_images", save_path=xp_manager.dir_xp, store_games=True)
+        logger.info(">>>------------------------------------------------<<<")
 
         if args.skip_training:
             logger.info("Skip training...")
@@ -233,10 +233,11 @@ if __name__ == '__main__':
                                       batch_size=batch_size,
                                       batchifier=eval_batchifier,
                                       shuffle=False)
-            [val_accuracy, _] = game_engine.process(sess, valid_iterator, mode="sampling")
+            [val_accuracy, games] = game_engine.process(sess, valid_iterator, mode="sampling")
 
             logger.info("Accuracy (train - sampling) : {}".format(train_accuracy))
             logger.info("Accuracy (valid - sampling) : {}".format(val_accuracy))
+            # val_accuracy = train_accuracy
 
             xp_manager.save_checkpoint(sess, qgen_saver,
                                        epoch=epoch,
@@ -245,7 +246,6 @@ if __name__ == '__main__':
                                            valid_accuracy=val_accuracy,
                                        ))
 
-        #
         logger.info(">>>-------------- FINAL SCORE ---------------------<<<")
 
         # Load early stopping
@@ -254,9 +254,11 @@ if __name__ == '__main__':
 
         logger.info(">>>  New Objects  <<<")
         compute_qgen_accuracy(sess, trainset, batchifier=train_batchifier, looper=game_engine,
-                              mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size)
+                              mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size,
+                              name="new_object", save_path=xp_manager.dir_xp, store_games=True)
 
         logger.info(">>>  New Games  <<<")
         compute_qgen_accuracy(sess, testset, batchifier=eval_batchifier, looper=game_engine,
-                              mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size)
+                              mode=mode_to_evaluate, cpu_pool=cpu_pool, batch_size=batch_size,
+                              name="new_games", save_path=xp_manager.dir_xp, store_games=True)
         logger.info(">>>------------------------------------------------<<<")

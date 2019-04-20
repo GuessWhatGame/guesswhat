@@ -108,7 +108,8 @@
     "clip_val": 10.0,
     "weight_decay": 5e-6,
     "weight_decay_add": ["film_stack"],
-    "weight_decay_remove": ["feedback_loop", "FiLM_layer"]
+    "weight_decay_remove": ["feedback_loop", "FiLM_layer"],
+    "gradient_noise_std": 0.01
   },
 
   "status": ["success"],

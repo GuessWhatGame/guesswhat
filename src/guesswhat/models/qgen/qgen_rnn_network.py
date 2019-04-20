@@ -13,8 +13,10 @@ from guesswhat.models.qgen.qgen_utils import *
 
 class QGenNetworkRNN(AbstractNetwork):
 
-    def __init__(self, config, num_words, policy_gradient, device='', reuse=False):
+    def __init__(self, config, num_words, rl_module=None, device='', reuse=False):
         AbstractNetwork.__init__(self, "qgen", device=device)
+
+        self.rl_module = rl_module
 
         # Create the scope for this graph
         with tf.variable_scope(self.scope_name, reuse=reuse):
@@ -91,23 +93,22 @@ class QGenNetworkRNN(AbstractNetwork):
                                                 num_units=config['dialogue']["rnn_units"],
                                                 layer_norm=config["dialogue"]["layer_norm"],
                                                 reuse=reuse)
-
-            self.decoder_projection_layer = tf.layers.Dense(num_words, use_bias=False)
-
-            training_helper = tfc_seq.TrainingHelper(inputs=visword_emb_dialogue,  # The question is the target
-                                                     sequence_length=self._seq_length_dialogue - 1)
-
-            # Define RNN states
             self.zero_states = self.decoder_cell.zero_state(tf.shape(self._seq_length_dialogue)[0], dtype=tf.float32)
-            decoder = BasicDecoderWithState(cell=self.decoder_cell,
-                                            helper=training_helper,
-                                            initial_state=self.zero_states,
-                                            output_layer=self.decoder_projection_layer)
 
-            (self.decoder_outputs, self.states, _), self.final_states, _ = tfc_seq.dynamic_decode(decoder, maximum_iterations=None)
+            self.decoder_states, self.decoder_final_state = tf.nn.dynamic_rnn(
+                cell=self.decoder_cell,
+                inputs=visword_emb_dialogue,
+                dtype=tf.float32,
+                initial_state=self.zero_states,
+                sequence_length=self._seq_length_dialogue,
+                scope="decoder")
 
-            # Prepare sampling graph
-            self._new_answer = tf.placeholder(tf.int32, [batch_size], name='new_answer')
+            self.decoder_projection_layer = tf.layers.Dense(num_words)
+            self.decoder_outputs = self.decoder_projection_layer(self.decoder_states)
+
+            # Prepare sampling graph TODO: make it clean
+            self._new_answer = tf.placeholder_with_default(
+                tf.zeros_like(self._seq_length_dialogue), shape=[batch_size], name='new_answer')
 
             #####################
             #   LOSS
@@ -131,42 +132,34 @@ class QGenNetworkRNN(AbstractNetwork):
                 self.loss = self.ml_loss
 
             # Compute policy gradient
-            if policy_gradient:
+            if self.rl_module is not None:
 
+                # Step 1: compute the state-value function
                 self._cum_rewards = tf.placeholder(tf.float32, shape=[batch_size, None], name='cum_reward')[:, 1:]
 
-                # with tf.variable_scope('rl_baseline'):
-                #     decoder_out = tf.stop_gradient(self.states)  # take the LSTM output (and stop the gradient!)
-                #
-                #     baseline_hidden = tfc_layers.fully_connected(decoder_out,
-                #                                                  num_outputs=int(int(decoder_out.get_shape()[-1]) / 4),
-                #                                                  activation_fn=tf.nn.relu,
-                #                                                  scope='baseline_hidden',
-                #                                                  reuse=reuse)
-                #
-                #     baseline_out = tfc_layers.fully_connected(baseline_hidden,
-                #                                               num_outputs=1,
-                #                                               activation_fn=tf.nn.relu,
-                #                                               scope='baseline',
-                #                                               reuse=reuse)
-                #     self.baseline = tf.squeeze(baseline_out, axis=-1)
-                #
-                #     self.baseline_loss = tf.square(self._cum_rewards - self.baseline)
-                #     self.baseline_loss *= self.mask
-                #
-                #     self.baseline_loss = tf.reduce_sum(self.baseline_loss, axis=1)
-                #     self.baseline_loss = tf.reduce_mean(self.baseline_loss, axis=0)
+                # Step 2: compute the state-value function
+                value_state = self.decoder_states
+                if self.rl_module.stop_gradient:
+                    value_state = tf.stop_gradient(self.decoder_states)
+                v_hidden_units = int(int(value_state.get_shape()[-1]) / 4)
 
-                with tf.variable_scope('policy_gradient_loss'):
-                    self.log_of_policy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.decoder_outputs, labels=target_dialogue)
+                with tf.variable_scope('value_function'):
+                    self.value_function = tf.keras.models.Sequential()
+                    self.value_function.add(tf.layers.Dense(units=v_hidden_units,
+                                                            activation=tf.nn.relu,
+                                                            input_shape=(int(value_state.get_shape()[-1]),),
+                                                            name="value_function_hidden"))
+                    self.value_function.add(tf.layers.Dense(units=1,
+                                                            activation=None,
+                                                            name="value_function"))
+                    self.value_function.add(tf.keras.layers.Reshape((-1,)))
 
-                    self.policy_gradient_loss = tf.multiply(self.log_of_policy, self._cum_rewards)  # - self.baseline)  # score function
-                    self.policy_gradient_loss *= self.mask
-
-                    self.policy_gradient_loss = tf.reduce_sum(self.policy_gradient_loss, axis=1)  # sum over the dialogue trajectory
-                    self.policy_gradient_loss = tf.reduce_mean(self.policy_gradient_loss, axis=0)  # reduce over batch dimension
-
-                    self.loss = self.policy_gradient_loss  # + self.baseline_loss
+                # Step 3: compute the RL loss (reinforce, A3C, PPO etc.)
+                self.loss = rl_module(cum_rewards=self._cum_rewards,
+                                      value_function=self.value_function(value_state),
+                                      policy_state=self.decoder_outputs,
+                                      actions=target_dialogue,
+                                      action_mask=self.mask)
 
     def create_sampling_graph(self, start_token, stop_token, max_tokens):
 
@@ -180,15 +173,20 @@ class QGenNetworkRNN(AbstractNetwork):
                                                       end_token=stop_token)
 
         start_dialogue = tf.equal(self._new_answer, start_token)
-        initial_state = tf.where(start_dialogue, self.zero_states, self.final_states)
+        initial_state = tf.where(start_dialogue, self.zero_states, self.decoder_final_state)
 
-        decoder = tfc_seq.BasicDecoder(
-            self.decoder_cell, sample_helper, initial_state,
-            output_layer=self.decoder_projection_layer)
+        decoder = BasicDecoderWithState(cell=self.decoder_cell,
+                                        helper=sample_helper,
+                                        initial_state=initial_state,
+                                        output_layer=self.decoder_projection_layer)
 
-        (_, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
+        (outputs, states, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
 
-        return sample_id, seq_length
+        state_value = sample_id * 0
+        if self.rl_module is not None:
+            state_value = self.value_function(states)
+
+        return sample_id, seq_length, state_value
 
     def create_greedy_graph(self, start_token, stop_token, max_tokens):
 
@@ -202,21 +200,26 @@ class QGenNetworkRNN(AbstractNetwork):
                                                       end_token=stop_token)
 
         start_dialogue = tf.equal(self._new_answer, start_token)
-        initial_state = tf.where(start_dialogue, self.zero_states, self.final_states)
+        initial_state = tf.where(start_dialogue, self.zero_states, self.decoder_final_state)
 
-        decoder = tfc_seq.BasicDecoder(
-            self.decoder_cell, greedy_helper, initial_state,
-            output_layer=self.decoder_projection_layer)
+        decoder = BasicDecoderWithState(cell=self.decoder_cell,
+                                        helper=greedy_helper,
+                                        initial_state=initial_state,
+                                        output_layer=self.decoder_projection_layer)
 
-        (_, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
+        (outputs, states, sample_id), _, seq_length = tfc_seq.dynamic_decode(decoder, maximum_iterations=max_tokens)
 
-        return sample_id, seq_length
+        state_value = sample_id * 0
+        if self.rl_module is not None:
+            state_value = self.value_function(states)
+
+        return sample_id, seq_length, state_value
 
     def create_beam_graph(self, start_token, stop_token, max_tokens, k_best):
 
         # create k_beams
         start_dialogue = tf.equal(self._new_answer, start_token)
-        decoder_initial_state = tf.where(start_dialogue, self.zero_states, self.final_states)
+        decoder_initial_state = tf.where(start_dialogue, self.zero_states, self.decoder_final_state)
         decoder_initial_state = tf.contrib.seq2seq.tile_batch(decoder_initial_state, multiplier=k_best)
 
         def embedding(idx):

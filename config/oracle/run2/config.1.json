@@ -1,5 +1,5 @@
 {
-  "name" : "FiLM",
+  "name" : "FiLM + classif",
 
   "model": {
 
@@ -103,7 +103,7 @@
 
   "optimizer": {
     "no_epoch": 10,
-    "learning_rate": 3e-4,
+    "learning_rate": 2e-4,
     "batch_size": 64,
     "clip_val": 10.0,
     "weight_decay": 5e-6,

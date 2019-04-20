@@ -14,7 +14,7 @@ def create_guesser(config, num_words, reuse=False):
     network_type = config["type"]
 
     if network_type == "oracle":
-        network = FiLM_Oracle(config, num_words, num_answers=2)
+        network = FiLM_Oracle(config, num_words, num_answers=2, name="guesser")
         batchifier = GuesserCropBatchifier
         listener = CropAccuracyListener(require=network.softmax)
 

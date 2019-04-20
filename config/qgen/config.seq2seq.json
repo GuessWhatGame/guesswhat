@@ -18,7 +18,7 @@
       "layer_norm" : true,
       "max_pool" : false,
 
-      "share_decoder_emb": true
+      "share_decoder_emb": false
     },
 
     "image": {
@@ -27,7 +27,6 @@
       "normalize": false
     },
 
-
     "pooling" : {
       "mode": "glimpse",
       "no_attention_mlp": 256,
@@ -35,7 +34,7 @@
     },
 
     "fusion" : {
-      "mode": "vis",
+      "mode": "concat",
       "projection_size": 512
     },
 
@@ -54,7 +53,7 @@
     "learning_rate": 3e-4,
     "batch_size": 64,
     "clip_val": 10.0,
-    "weight_decay": 5e-6,
+    "weight_decay": 0,
     "weight_decay_add": ["film_stack"],
     "weight_decay_remove": ["feedback_loop", "FiLM_layer"]
   },

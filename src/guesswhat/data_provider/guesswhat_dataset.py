@@ -370,3 +370,55 @@ def dump_oracle(oracle_data, games, save_path, name="oracle"):
 
             f.write(str(json.dumps(sample)).encode())
             f.write(b'\n')
+
+
+def dump_dataset(games, save_path, tokenizer, name="model"):
+
+    with gzip.open(save_path.format('guesswhat.' + name + '.jsonl.gz'), 'wb') as f:
+
+        for _, game in enumerate(games):
+
+            sample = {}
+
+            qas = []
+            start = 1
+            for k, word in enumerate(dialogue):
+                if word == tokenizer.yes_token or \
+                        word == tokenizer.no_token or \
+                        word == tokenizer.non_applicable_token:
+                    q = tokenizer.decode(dialogue[start:k - 1])
+                    a = tokenizer.decode([dialogue[k]])
+
+                    prob_obj = list(prob_objects[len(qas), :len(game.objects)])
+                    prob_obj = [str(round(p, 3)) for p in prob_obj]  # decimal are not supported y default in json encoder
+
+                    qas.append({"question": q,
+                                "answer": a[1:-1],
+                                "id": k,
+                                "p": prob_obj})
+
+                    start = k + 1
+
+            sample["id"] = game.dialogue_id if true_id else 0
+            sample["qas"] = qas
+            sample["image"] = {
+                "id": game.image.id,
+                "width": game.image.width,
+                "height": game.image.height,
+                "coco_url": game.image.url
+            }
+
+            sample["objects"] = [{"id": o.id,
+                                  "category_id": o.category_id,
+                                  "category": o.category,
+                                  "area": o.area,
+                                  "bbox": o.bbox.coco_bbox,
+                                  "segment": [],  # no segment to avoid making the file to big
+                                  } for o in game.objects]
+
+            sample["object_id"] = object_id
+            sample["guess_object_id"] = guess_object_id
+            sample["status"] = "success" if success else "failure"
+
+            f.write(str(json.dumps(sample)).encode())
+            f.write(b'\n')

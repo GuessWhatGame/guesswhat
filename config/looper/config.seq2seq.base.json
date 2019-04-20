@@ -1,12 +1,10 @@
 {
-  "name": "Basic Looper (rnn) : baseline - test",
-
-  "rl_module": "reinforce",
+  "name": "Basic Looper (seq2seq) : baseline",
 
   "optimizer": {
     "name" : "GradientDescentOptimizer",
     "no_epoch": 100,
-    "learning_rate": 1e-3,
+    "learning_rate": 1e-2,
     "batch_size": 64,
     "clip_val": 10,
     "weight_decay": 0,
@@ -20,12 +18,10 @@
     "beam_k_best" : 20
   },
 
-
-
   "oracle_identifier" : "90d2dd2abc002707736b53f1253fdda5",
   "guesser_identifier": "d76baec0071bd07dd97c67c180ce526b",
 
-  "qgen_identifier" : "07fc2a590546200cf63968d683b83cb8",
+  "qgen_identifier" : "c27a71a8ed91ff94b05365e4a177c487",
 
   "seed": -1
 
