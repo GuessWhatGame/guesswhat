@@ -8,6 +8,8 @@ The code was equally developed by Florian Strub (University of Lille) and Harm d
 
 The project is part of the CHISTERA - IGLU Project.
 
+You can also have access to a more advanced codebase with more baselines by using the branch refacto_v2: https://github.com/GuessWhatGame/guesswhat/tree/refacto_v2
+
 **WARNING: After refactoring the code of the original paper, we fixed a bug in the codebase (the last generated question was ignored in some cases). New scores are greatly above the scores reported in [1] but some results analysis are now obsolete (qgen stop learning to stop, greedy has the highest accuracy). We apologize for the inconvenience.**
 
 
@@ -101,9 +103,9 @@ GuessWhat?! relies on two datasets:
 
 To download the GuessWhat?! dataset please follow the following instruction:
 ```
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.train.jsonl.gz -P data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.valid.jsonl.gz -P data/
-wget https://s3-us-west-2.amazonaws.com/guess-what/guesswhat.test.jsonl.gz -P data/
+wget https://florian-strub.com/guesswhat.train.jsonl.gz -P data/
+wget https://florian-strub.com//guesswhat.valid.jsonl.gz -P data/
+wget https://florian-strub.com//guesswhat.test.jsonl.gz -P data/
 ```
 
 To download the MS Coco dataset, please follow the following instruction:
