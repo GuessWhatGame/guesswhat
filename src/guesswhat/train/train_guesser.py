@@ -34,10 +34,9 @@ if __name__ == '__main__':
     parser.add_argument("-config", type=str, help="Configuration file")
     parser.add_argument("-dict_file", type=str, default="dict.json", help="Dictionary file name")
     parser.add_argument("-load_checkpoint", type=str, help="Load model parameters from specified checkpoint")
-    parser.add_argument("-continue_exp", lambda x: bool(strtobool(x)), default="False", help="Continue previously started experiment?")
+    parser.add_argument("-continue_exp", action='store_true', default=False, help="Continue previously started experiment, answer 0/1?")
     parser.add_argument("-gpu_ratio", type=float, default=1., help="How many GPU ram is required? (ratio)")
     parser.add_argument("-no_thread", type=int, default=1, help="No thread to load batch")
-
 
     args = parser.parse_args()
     config, exp_identifier, save_path = load_config(args.config, args.exp_dir)

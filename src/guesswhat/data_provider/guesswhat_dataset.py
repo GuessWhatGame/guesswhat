@@ -31,7 +31,8 @@ class Game:
                            which_set=which_set,
                            image_builder=image_builder)
         self.objects = []
-        for o in objects:
+        for key, o in objects.items():
+            o['id'] = key
 
             new_obj = Object(id=o['id'],
                              category=o['category'],
@@ -44,12 +45,12 @@ class Game:
                              image=self.image)
 
             self.objects.append(new_obj)
-            if o['id'] == object_id:
+            if o['id'] == str(object_id):
                 self.object = new_obj  # Keep ref on the object to find
 
         self.question_ids = [qa['id'] for qa in qas]
-        self.questions = [qa['question'] for qa in qas]
-        self.answers = [qa['answer'] for qa in qas]
+        self.questions = [qa['q'] for qa in qas]
+        self.answers = [qa['a'] for qa in qas]
         self.status = status
 
     def show(self, img_raw_dir, display_index=False, display_mask=False):
@@ -154,6 +155,9 @@ class Dataset(AbstractDataset):
             for line in f:
                 line = line.decode("utf-8")
                 game = json.loads(line.strip('\n'))
+                game['id'] = game['dialogue_id']
+                game['image'] = game['picture']
+                game['image']['id'] = game['picture_id']
 
                 g = Game(id=game['id'],
                          object_id=game['object_id'],
