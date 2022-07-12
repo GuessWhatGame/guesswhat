@@ -1,0 +1,9 @@
+python==3.6
+h5py==3.1.0
+image==1.5.33
+nltk==3.6.7
+Pillow==8.4.0
+tensorflow==1.1.0
+tqdm==4.64.0
+
+#tensoflow-gpu has issues on the M1 chips, therefore not included in this current setup. Please install if resolved in the future. 

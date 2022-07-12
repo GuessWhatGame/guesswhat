@@ -1,0 +1,57 @@
+name: gw-lstm
+channels:
+  - defaults
+dependencies:
+  - ca-certificates=2022.4.26=hecd8cb5_0
+  - certifi=2021.5.30=py36hecd8cb5_0
+  - libcxx=12.0.0=h2f01273_0
+  - libffi=3.3=hb1e8313_2
+  - ncurses=6.3=hca72f7f_2
+  - openssl=1.1.1o=hca72f7f_0
+  - pip=21.2.2=py36hecd8cb5_0
+  - python=3.6.13=h88f2d9e_0
+  - readline=8.1.2=hca72f7f_1
+  - setuptools=58.0.4=py36hecd8cb5_0
+  - sqlite=3.38.3=h707629a_0
+  - tk=8.6.12=h5d9f67b_0
+  - wheel=0.37.1=pyhd3eb1b0_0
+  - xz=5.2.5=hca72f7f_1
+  - zlib=1.2.12=h4dc903c_2
+  - pip:
+    - absl-py==1.1.0
+    - asgiref==3.4.1
+    - astor==0.8.1
+    - cached-property==1.5.2
+    - click==8.0.4
+    - dataclasses==0.8
+    - django==3.2.13
+    - gast==0.2.2
+    - google-pasta==0.2.0
+    - grpcio==1.46.3
+    - h5py==3.1.0
+    - image==1.5.33
+    - importlib-metadata==4.8.3
+    - importlib-resources==5.4.0
+    - joblib==1.1.0
+    - keras-applications==1.0.8
+    - keras-preprocessing==1.1.2
+    - markdown==3.3.7
+    - nltk==3.6.7
+    - numpy==1.19.5
+    - opt-einsum==3.3.0
+    - pillow==8.4.0
+    - protobuf==3.19.4
+    - pytz==2022.1
+    - regex==2022.6.2
+    - six==1.16.0
+    - sqlparse==0.4.2
+    - tensorboard==1.15.0
+    - tensorflow==1.1.0
+    - tensorflow-estimator==1.15.1
+    - termcolor==1.1.0
+    - tqdm==4.64.0
+    - typing-extensions==4.1.1
+    - werkzeug==2.0.3
+    - wrapt==1.14.1
+    - zipp==3.6.0
+prefix: /Users/tamaraexplosion/miniconda3/envs/gw-lstm

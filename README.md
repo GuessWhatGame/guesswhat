@@ -1,34 +1,14 @@
 # Guesswhat?! models
 
 This repo aims at reproducing the results from the series of GuessWhat?! papers, namely:
-- GuessWhat?! Visual object discovery through multi-modal dialogue [1] https://arxiv.org/abs/1611.08481
-- End-to-end optimization of goal-driven and visually grounded dialogue systems [2] - https://arxiv.org/abs/1703.05423
+- GuessWhat?! Visual object discovery through multi-modal dialogue [1](https://arxiv.org/abs/1611.08481)
+- End-to-end optimization of goal-driven and visually grounded dialogue systems [2](https://arxiv.org/abs/1703.05423)
 
-The code was equally developed by Florian Strub (University of Lille) and Harm de Vries (University of Montreal)
+The code was equally developed by Florian Strub (University of Lille) and Harm de Vries (University of Montreal) and it is part of the CHISTERA - IGLU Project.
 
-The project is part of the CHISTERA - IGLU Project.
-
-You can also have access to a more advanced codebase with more baselines by using the branch refacto_v2: https://github.com/GuessWhatGame/guesswhat/tree/refacto_v2
+[This branch](https://github.com/GuessWhatGame/guesswhat/tree/refacto_v2) contains a more advanced codebase and multiple baselines.
 
 **WARNING: After refactoring the code of the original paper, we fixed a bug in the codebase (the last generated question was ignored in some cases). New scores are greatly above the scores reported in [1] but some results analysis are now obsolete (qgen stop learning to stop, greedy has the highest accuracy). We apologize for the inconvenience.**
-
-
-#### Summary:
-
-* [Introduction](#introduction)
-* [Installation](#installation)
-    * [Download](#Download)
-    * [Requirements](#requirements)
-    * [File architecture](#file-architecture)
-    * [Data](#data)
-    * [Pretrained models](#pretrained-models)
-* [Reproducing results](#reproducing-results)
-    * [Process Data](#data)
-    * [Train Oracle](#oracle)
-    * [Train Guesser](#guesser)
-    * [Train Qgen](#qgen)
-* [FAQ](#faq)    
-* [Citation](#citation)
 
 ## Introduction
 
@@ -40,24 +20,17 @@ Higher-level image understanding, like spatial reasoning and language grounding,
 
 ### Download
 
-Our code has internal dependences called submodules. To properly clone the repository, please use the following git command:\
+Our code has internal dependences called submodules. In order to retrieve the submodules that reside outside of the main repository, the ```--recursive``` flag is necessary. Please use the command below:
 
 ```
-git clone --recursive https://github.com/GuessWhatGame/guesswhat.git'
+git clone --recursive https://github.com/GuessWhatGame/guesswhat.git
 ```
 
 ### Requirements
 
-The code works on both python 2 and 3. It relies on the tensorflow python API.
-It requires the following python packages:
+To support the right version of tensorflow needed to run the code, a Python version up to 3.6 is needed. 
 
-```
-pip install \
-    tensorflow-gpu \
-    nltk \
-    tqdm \
-    image
-```
+The rest of the requirements you can install by running  ```pip install -r setup/requirements.txt``` or have a complete setup together with the right Python version by running ```conda env create --name guesswhat-env --file setup/conda.yml python=3.6``` if you are using anaconda for your virtual enviroment management. 
 
 
 ### File architecture
@@ -97,9 +70,7 @@ mkdir out; mkdir out/oracle ; mkdir out/guesser; mkdir out/qgen; mkdir out/loope
 Of course, one is free to change this file architecture!
 
 ### Data
-GuessWhat?! relies on two datasets:
- - the [GuessWhat?!](https://guesswhat.ai/) dataset that contains the dialogue inputs
- - The [MS Coco](http://mscoco.org/) dataset that contains the image inputs
+GuessWhat?! relies on two datasets: GuessWhat?! which contains the dialogue inputs and [MS Coco](https://cocodataset.org/#download) which contains the image inputs.
 
 To download the GuessWhat?! dataset please follow the following instruction:
 ```
@@ -117,9 +88,9 @@ wget http://msvocds.blob.core.windows.net/coco2014/val2014.zip -P data/img/
 unzip data/img/val2014.zip -d data/img/raw
 
 # creates a folder `raw` with filenames as expected by preprocessing script below
-python ./src/guesswhat/preprocess_data/rewire_coco_image_id.py \ 
-   -image_dir `pwd`/data/img/raw \
-   -data_out `pwd`/data/img/raw
+python src/guesswhat/preprocess_data/rewire_coco_image_id.py \ 
+   -image_dir data/img/raw \
+   -data_out data/img/raw
 ```
 
 NB: Please check that md5sum are correct after downloading the files to check whether they have been corrupted.
@@ -160,12 +131,12 @@ Note that you can also directly execute the experiments in the source folder.
 Before starting the training, one needs to compute the image features and the word dictionary
 
 #### Extract image features
-Following the original papers, we are going to extract fc8 features from the coco images by using a VGG-16 network.
+Following the original papers, we are going to extract fc8 features from the coco images by using a VGG-16 network. There are two solutions available to obtain the vgg-img features: 
 
 - Solution 1: You can directly download the vgg features:  
 ```
-wget www.florian-strub.com/github/ft_vgg_img.zip -P data/images
-unzip data/images/ft_vgg_img.zip -d data/images/
+wget www.florian-strub.com/github/ft_vgg_img.zip -P data/img
+unzip data/img/ft_vgg_img.zip -d data/img/
 ```
 
 - Solution 2: You can download vgg-16 pretrained network provided by [slim-tensorflow](https://github.com/tensorflow/models/tree/master/research/slim):
@@ -175,40 +146,39 @@ wget http://download.tensorflow.org/models/vgg_16_2016_08_28.tar.gz -P data/
 tar zxvf data/vgg_16_2016_08_28.tar.gz -C data/
 ```
 
-GuessWhat?! requires to both computes the image features from the full image
-To do so, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/extract_img_features.py .
+However, in order to obtain the crop features, you must use the download available as Solution 2 and run the script at the end of this section to generate the crop features. This is a computationally costly step. In order to run just the guesser, just downloading the VGG features from solution 1 is enough. To train the Oracle, the crop features are required. 
+
+GuessWhat?! requires both to compute the image features from the full image. In order to compute the crop image features(and image features if you would like to compute them from scratch), you need to use the [python script](guesswhat/src/guesswhat/preprocess_data/extract_img_features.py), as shown below.
+
+Replace ```$mode``` with ```img``` or ```crop```.
+
 ```
-array=( img crop )
-for mode in "${array[@]}"; do
-   python src/guesswhat/preprocess_data/extract_img_features.py \
-     -img_dir data/img/raw \
-     -data_dir data \
-     -out_dir data/img/ft_vgg_$mode \
-     -network vgg \
-     -ckpt data/vgg_16.ckpt \
-     -feature_name fc8 \
-     -mode $mode
-done
+python src/guesswhat/preprocess_data/extract_img_features.py \
+   -img_dir data/img/raw \
+   -data_dir data \
+   -out_dir data/img/ft_vgg_$mode \
+   -network vgg \
+   -ckpt data/vgg_16.ckpt \
+   -feature_name fc8 \
+   -mode $mode
 ```
 
-Noticeably, one can also extract VGG-fc7 or Resnet features. Please follow the script documentation for more advanced setting.
+Using this script, one can extract both VGG-fc7 and Resnet features. Please follow the script documentation for more advanced setting.
 
 
 #### Create dictionary
-
-To create the GuessWhat?! dictionary, you need to use the pythn script guesswhat/src/guesswhat/preprocess_data/create_dico.py .
+Creating a dictionary is a necessary step before running the model. To create the GuessWhat?! dictionary, you need to use the [designated script](guesswhat/src/guesswhat/preprocess_data/create_dico.py) .
 
 ```
 python src/guesswhat/preprocess_data/create_dictionary.py -data_dir data -dict_file dict.json -min_occ 3
 ```
 
+### Updating the config file before training
+The [config file](config/oracle/config.json) contains the default values for training. If you would like to provide different values, you will need to edit the file and it's default values. This applies to training every part of the game. Please look at the config folder for more information about this.
+
 
 ### Train Oracle
-To train the oracle, you need to select/configure the input you want to use.
-To do so, you have update the file config/oracle/config.json
-By default, the oracle is trained with  spatial+category but one may add/remove inputs.
-More information are available in the config folder.
-
+By default, the oracle is trained with spatial+category input. You can change this as mentioned above.
 Once the config file is set, you can launch the training step:
 ```
 python src/guesswhat/train/train_oracle.py \
@@ -230,12 +200,10 @@ After training, we obtained the following results:
 
 
 ### Train Guesser
-Identically, you first have to update the config/guesser/config.json
-
 ```
 python src/guesswhat/train/train_guesser.py \
    -data_dir data \
-   -img_dir data/ft_vgg_img \
+   -img_dir data/img/ft_vgg_img \
    -config config/guesser/config.json \
    -exp_dir out/guesser \
    -no_thread 2 
@@ -251,11 +219,10 @@ After training, we obtained the following results:
 
 
 ### Train QGen
-Identically, you first have to update the config/guesser/config.json
 ```
 python src/guesswhat/train/train_qgen_supervised.py \
    -data_dir data \
-   -img_dir data/ft_vgg_img \
+   -img_dir data/img/ft_vgg_img \
    -config config/qgen/config.json \
    -exp_dir out/qgen \
    -no_thread 2 
@@ -286,8 +253,8 @@ python src/guesswhat/train/train_qgen_reinforce.py
     -data_dir data/ \
     -exp_dir out/loop/ \
     -config config/looper/config.json \
-    -img_dir data/ft_vgg_img \
-    -crop_dir data/ft_vgg_crop \
+    -img_dir data/img/ft_vgg_img \
+    -crop_dir data/img/ft_vgg_crop \
     -networks_dir out/ \
     -oracle_identifier <oracle_identifier> \
     -qgen_identifier <qgen_identifier> \
