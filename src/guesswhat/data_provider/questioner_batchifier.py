@@ -65,7 +65,7 @@ class QuestionerBatchifier(AbstractBatchifier):
                 spatial = get_spatial_feat(obj.bbox, game.image.width, game.image.height)
                 category = obj.category_id
 
-                if obj.id == game.object_id:
+                if obj.id == str(game.object_id):
                     batch['targets_category'].append(category)
                     batch['targets_spatial'].append(spatial)
                     batch['targets_index'].append(index)
